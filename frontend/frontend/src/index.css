@@ -125,23 +125,36 @@
   transform: scale(1.05);
   box-shadow: 0 8px 20px rgba(192, 132, 252, 0.6);
 }
-/* ===== FIX GLOBAL: texto invisible en botones ===== */
-button, .btn {
+/* ===== FIX GLOBAL: texto visible en botones/chips/emojis ===== */
+button, .btn, .chip, .fc-card, .recetas-search button, .more {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  font-size: 15px;
+  font-size: 15px !important;
   line-height: 1.2;
-
-  /* fuerza color del texto y evita background-clip:text heredado */
+  font-weight: 700;
   color: #111827 !important;
   -webkit-text-fill-color: currentColor !important;
   -webkit-background-clip: border-box !important;
   background-clip: border-box !important;
-  font-weight: 700;
 }
 
-.btn-primary, .btn-success, .btn.primary, .search button {
+/* Botones con gradiente => texto blanco */
+.btn-primary, .btn-success, .btn.primary, .recetas-search button {
   color: #ffffff !important;
   -webkit-text-fill-color: #ffffff !important;
 }
+
+/* Asegurar emoji/fuentes legibles en todas partes */
+body, .inicio, .recetas, .nr-wrap, .fc-card, .chip, .thumb {
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Noto Color Emoji",
+               "Apple Color Emoji", "Segoe UI Emoji", Arial, sans-serif;
+}
+/* ===== Reset suave para listas y controles ===== */
+ul, ol { margin: 0; padding: 0; list-style: none; }
+button { border: 0; background: none; }
+input, button, select, textarea { font: inherit; }
+/* colchón para que la navbar superior no tape el contenido */
+body { padding-top: calc(86px + env(safe-area-inset-top, 0)); }
+
+/* si antes dejaste padding-bottom por el dock inferior, ya no hace falta */

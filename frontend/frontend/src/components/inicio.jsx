@@ -1,13 +1,14 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import "./inicio.css";
-import FeaturedCarousel from "./FeaturedCarousel.jsx";             // 👈 nuevo
-import { fetchFeatured } from "../services/recipesService.js";     // 👈 nuevo
+import FeaturedCarousel from "./FeaturedCarousel.jsx";
+import { fetchFeatured } from "../services/recipesService.js";
 
 export default function Inicio({ onLoginClick, onRegisterClick }) {
   const nav = useNavigate();
   const [term, setTerm] = useState("");
   const [tipIndex, setTipIndex] = useState(0);
+
   const tips = [
     "Tu receta, tu historia: añade una anécdota a cada plato ✍️",
     "Etiqueta tus recetas por ingrediente para encontrarlas rápido 🏷️",
@@ -16,10 +17,8 @@ export default function Inicio({ onLoginClick, onRegisterClick }) {
     "Usa medidas consistentes y añade tiempos de preparación ⏱️",
   ];
 
-  // 👇 destacados
   const [featured, setFeatured] = useState([]);
   useEffect(() => { fetchFeatured().then(setFeatured); }, []);
-
   useEffect(() => {
     const id = setInterval(() => setTipIndex((i)=> (i+1)%tips.length), 5000);
     return () => clearInterval(id);
@@ -28,6 +27,7 @@ export default function Inicio({ onLoginClick, onRegisterClick }) {
   const goLogin = () => (onLoginClick ? onLoginClick() : nav("/login"));
   const goRegister = () => (onRegisterClick ? onRegisterClick() : nav("/register"));
   const goRecetas = () => nav("/recetas");
+
   const search = (e) => {
     e.preventDefault();
     const q = term.trim();
@@ -53,15 +53,17 @@ export default function Inicio({ onLoginClick, onRegisterClick }) {
         <p className="slogan">Tu receta, tu historia ✨</p>
         <p className="sub">Comparte, cocina y guarda tus sabores favoritos con tus amigos.</p>
 
-        {/* buscador */}
         <form className="search" onSubmit={search}>
           <span className="search-icon" aria-hidden="true">🔎</span>
-          <input className="search-input" placeholder="Busca por ingrediente o nombre…"
-                 value={term} onChange={(e)=>setTerm(e.target.value)} />
+          <input
+            className="search-input"
+            placeholder="Busca por ingrediente o nombre…"
+            value={term}
+            onChange={(e)=>setTerm(e.target.value)}
+          />
           <button className="btn btn-primary" type="submit">Buscar</button>
         </form>
 
-        {/* chips */}
         <div className="chips">
           {categorias.map(c=>(
             <button key={c.label} className="chip" onClick={()=>openCat(c.label)}>
@@ -70,17 +72,14 @@ export default function Inicio({ onLoginClick, onRegisterClick }) {
           ))}
         </div>
 
-        {/* tip */}
         <div className="tip">
           <span className="tip-emoji">💡</span>
           <span className="tip-text">{tips[tipIndex]}</span>
         </div>
 
-        {/* 👉 Destacadas */}
         <h3 className="section-title">Recetas destacadas</h3>
         <FeaturedCarousel recipes={featured} />
 
-        {/* CTA */}
         <div className="cta">
           <button className="btn btn-primary" onClick={goRecetas}>Explorar recetas</button>
           <button className="btn btn-ghost" onClick={goLogin}>Iniciar sesión</button>

@@ -1,6 +1,4 @@
-:root{
-  --pink:#ec4899; --fuchsia:#d946ef; --indigo:#6366f1; --emerald:#10b981; --slate:#0f172a;
-}
+:root{ --pink:#ec4899; --fuchsia:#d946ef; --indigo:#6366f1; --emerald:#10b981; --slate:#0f172a; }
 
 .inicio{
   position: relative; min-height: 100vh; padding: 64px 20px 120px; color:#111827;
@@ -26,7 +24,6 @@
 .slogan{ margin: 0 0 8px; font-size: clamp(18px, 2.8vw, 24px); color:#374151; font-weight:600; }
 .sub{ margin: 0 auto 20px; max-width: 46ch; color:#4b5563; }
 
-/* Buscador */
 .search{
   position: relative; display: grid; grid-template-columns: 1fr auto; gap: 10px;
   max-width: 680px; margin: 8px auto 14px; align-items: center;
@@ -35,24 +32,22 @@
   width: 100%; border-radius: 999px; padding: 12px 16px 12px 44px;
   border: 1px solid rgba(203,213,225,.9); background: rgba(255,255,255,.9); outline: none;
 }
-.search-input:focus{ border-color: #f9a8d4; box-shadow: 0 0 0 3px rgba(244,114,182,.28); }
+.search-input:focus{ border-color:#f9a8d4; box-shadow: 0 0 0 3px rgba(244,114,182,.28); }
 .search-icon{
   position: absolute; left: 14px; top: 50%; transform: translateY(-50%); font-size: 18px; opacity:.6;
 }
 
-/* Chips */
 .chips{
   display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; margin: 6px 0 10px;
 }
 .chip{
   display: inline-flex; align-items: center; gap: 8px; padding: 10px 14px; border-radius: 999px;
   border: 1px solid rgba(203,213,225,.9); background: #fff; cursor: pointer; font-weight: 600;
-  transition: transform .12s ease, filter .2s ease;
+  transition: transform .12s ease, filter .2s ease; color:#111827 !important;
 }
 .chip:hover{ transform: translateY(-1px); filter: brightness(1.02); }
 .chip-emoji{ font-size: 18px; }
 
-/* Tip del día */
 .tip{
   margin: 10px auto 6px; display: inline-flex; align-items: center; gap: 8px;
   padding: 10px 14px; border-radius: 14px; background: rgba(236,72,153,.08); color:#374151;
@@ -61,35 +56,26 @@
 .tip-emoji{ font-size: 18px; }
 .tip-text{ white-space: nowrap; max-width: 80vw; overflow: hidden; text-overflow: ellipsis; }
 
-/* CTAs */
+.section-title{ margin:14px 0 6px; font-weight:800; color:#111827; }
+
 .cta{ display:flex; flex-wrap:wrap; gap:12px; justify-content:center; margin: 14px 0 6px; }
 .btn{
   appearance:none; border:0; border-radius:999px; padding:12px 18px; font-weight:700; cursor:pointer;
   transition: transform .12s ease, filter .2s ease, opacity .2s ease;
-  display:inline-flex; align-items:center; justify-content:center;
-  font-size:15px; line-height:1.2;
-  color:#111827;
-  -webkit-background-clip: border-box; background-clip: border-box; /* evita clip:text heredado */
+  display:inline-flex; align-items:center; justify-content:center; font-size:15px; line-height:1.2;
+  color:#111827; -webkit-background-clip: border-box; background-clip: border-box;
 }
 .btn:active{ transform: scale(.98); }
 .btn-primary{
-  color:#fff !important;
-  background: linear-gradient(90deg, var(--pink), var(--fuchsia), var(--indigo));
+  color:#fff !important; background: linear-gradient(90deg, var(--pink), var(--fuchsia), var(--indigo));
   box-shadow: 0 8px 20px rgba(99,102,241,.25);
 }
-.btn-primary:hover{ filter: brightness(1.03); }
-.btn-ghost{
-  color: var(--slate); background:#fff; border:1px solid rgba(203,213,225,.9);
-}
-.btn-ghost:hover{ filter: brightness(1.03); }
+.btn-ghost{ color: var(--slate); background:#fff; border:1px solid rgba(203,213,225,.9); }
 .btn-success{
-  color:#fff !important;
-  background: linear-gradient(90deg, var(--emerald), #34d399);
+  color:#fff !important; background: linear-gradient(90deg, var(--emerald), #34d399);
   box-shadow: 0 8px 20px rgba(16,185,129,.25);
 }
-.btn-success:hover{ filter: brightness(1.03); }
 
-/* Frutitas decorativas */
 .fruit-cloud{ position:absolute; inset:0; pointer-events:none; z-index:0; }
 .fruit-cloud span{
   position:absolute; font-size: clamp(22px, 4vw, 36px); opacity:.16;
@@ -112,7 +98,4 @@
 .fruit-cloud span:nth-child(10){ top:86%; right:16%; animation-duration:7.8s; }
 
 .hero{ position: relative; z-index: 1; }
-@media (max-width: 520px){
-  .cta{ gap:10px; }
-  .btn{ padding:10px 14px; }
-}
+@media (max-width: 520px){ .cta{ gap:10px; } .btn{ padding:10px 14px; } }

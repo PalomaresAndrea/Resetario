@@ -1,62 +1,125 @@
-// Servicio MOCK para recetas (luego lo cambias por axios a tu API)
-const WAIT = (ms = 350) => new Promise(r => setTimeout(r, ms));
-const LS_USER_RECIPES = "mock_user_recipes";
+// src/services/recipesService.js
+// Servicio MOCK con localStorage para que todo el front funcione sin backend.
 
-// Seed de ejemplo (recetas públicas)
-const RECETAS_BASE = [
-  { id: "r1", titulo: "Tacos al pastor", categoria: "Tacos", tags:["cerdo","piña"], tiempo:"30 min", dificultad:"Fácil", porciones:4, autor:"Ana", emoji:"🌮" },
-  { id: "r2", titulo: "Pasta Alfredo", categoria: "Pasta", tags:["pollo","crema"], tiempo:"25 min", dificultad:"Media", porciones:2, autor:"Luis", emoji:"🍝" },
-  { id: "r3", titulo: "Cheesecake de fresa", categoria: "Postres", tags:["fresa","queso"], tiempo:"3 h", dificultad:"Media", porciones:8, autor:"Majo", emoji:"🍰" },
-  { id: "r4", titulo: "Ensalada César", categoria: "Ensaladas", tags:["pollo","lechuga"], tiempo:"15 min", dificultad:"Fácil", porciones:2, autor:"Karla", emoji:"🥗" },
-  { id: "r5", titulo: "Ramen casero", categoria: "Sopas", tags:["puerco","huevo"], tiempo:"1 h", dificultad:"Difícil", porciones:2, autor:"Ito", emoji:"🍜" },
-  { id: "r6", titulo: "Sandwich club", categoria: "Sandwiches", tags:["pavo","tocino"], tiempo:"12 min", dificultad:"Fácil", porciones:1, autor:"Pau", emoji:"🥪" },
-];
+const WAIT = (ms = 350) => new Promise(r => setTimeout(r, ms));
+const LS_KEY = "mock_user_recipes";
 
 const CAT_EMOJI = {
-  "Tacos":"🌮","Pasta":"🍝","Postres":"🍰","Ensaladas":"🥗","Sopas":"🍜","Sandwiches":"🥪","Desayunos":"🍳","Bebidas":"🥤","Mariscos":"🦐"
+  Tacos:"🌮", Pasta:"🍝", Postres:"🍰", Ensaladas:"🥗", Sopas:"🍜", Sandwiches:"🥪",
+  Desayunos:"🍳", Bebidas:"🥤", Mariscos:"🦐"
 };
 
+// Recetas base (con ingredientes y pasos)
+const RECETAS_BASE = [
+  {
+    id:"r1", titulo:"Tacos al pastor", categoria:"Tacos", tiempo:"30 min",
+    dificultad:"Fácil", porciones:4, autor:"Ana", emoji:"🌮", tags:["cerdo","piña"],
+    historia:"Receta callejera clásica de la CDMX. Me la pasó mi tío del mercado.",
+    ingredientes:[
+      { qty:"500", unit:"g", name:"carne de cerdo adobada" },
+      { qty:"1", unit:"taza", name:"piña en cubos" },
+      { qty:"1/2", unit:"", name:"cebolla blanca picada" },
+      { qty:"1", unit:"puñado", name:"cilantro picado" },
+      { qty:"8", unit:"", name:"tortillas de maíz" },
+      { qty:"al gusto", unit:"", name:"limón y sal" },
+    ],
+    pasos:[
+      "Cocina el cerdo adobado a fuego medio hasta dorar.",
+      "Calienta las tortillas.",
+      "Arma los tacos con carne, piña, cebolla y cilantro.",
+      "Sirve con limón y sal."
+    ],
+  },
+  {
+    id:"r2", titulo:"Pasta Alfredo", categoria:"Pasta", tiempo:"25 min",
+    dificultad:"Media", porciones:2, autor:"Luis", emoji:"🍝", tags:["pollo","crema"],
+    historia:"La clásica cremosa de días de antojo.",
+    ingredientes:[
+      { qty:"250", unit:"g", name:"pasta (fettuccine)" },
+      { qty:"2", unit:"cda", name:"mantequilla" },
+      { qty:"1", unit:"diente", name:"ajo picado" },
+      { qty:"1", unit:"taza", name:"crema para cocinar" },
+      { qty:"1/2", unit:"taza", name:"queso parmesano rallado" },
+      { qty:"al gusto", unit:"", name:"sal y pimienta" },
+    ],
+    pasos:[
+      "Cuece la pasta al dente.",
+      "Derrite mantequilla y saltea el ajo.",
+      "Agrega la crema y el parmesano hasta espesar.",
+      "Mezcla con la pasta y ajusta sal/pimienta."
+    ],
+  },
+  {
+    id:"r3", titulo:"Cheesecake de fresa", categoria:"Postres", tiempo:"3 h",
+    dificultad:"Media", porciones:8, autor:"Majo", emoji:"🍰", tags:["fresa","queso"],
+    historia:"Postre favorito de los cumples en casa.",
+    ingredientes:[
+      { qty:"200", unit:"g", name:"galletas María" },
+      { qty:"80", unit:"g", name:"mantequilla derretida" },
+      { qty:"600", unit:"g", name:"queso crema" },
+      { qty:"150", unit:"g", name:"azúcar" },
+      { qty:"3", unit:"", name:"huevos" },
+      { qty:"300", unit:"g", name:"fresas" },
+      { qty:"1/2", unit:"taza", name:"mermelada de fresa" },
+    ],
+    pasos:[
+      "Tritura galletas y mezcla con mantequilla para la base.",
+      "Bate queso, azúcar y huevos; vierte sobre la base.",
+      "Hornea ~45 min y enfría.",
+      "Cubre con fresas y mermelada."
+    ],
+  },
+];
+
+// ---- helpers localStorage ----
 function loadUser() {
-  try { return JSON.parse(localStorage.getItem(LS_USER_RECIPES)) || []; }
+  try { return JSON.parse(localStorage.getItem(LS_KEY)) || []; }
   catch { return []; }
 }
 function saveUser(arr) {
-  localStorage.setItem(LS_USER_RECIPES, JSON.stringify(arr));
+  localStorage.setItem(LS_KEY, JSON.stringify(arr));
 }
 
+// ---- API MOCK ----
 export async function fetchRecipes() {
   await WAIT();
   return [...RECETAS_BASE, ...loadUser()];
 }
 
 export async function fetchFeatured() {
-  await WAIT();
   const all = await fetchRecipes();
   return all.slice(0, 5);
 }
 
-/**
- * createRecipe(payload)
- * payload: {
- *  titulo, categoria, tiempo, dificultad, porciones, historia,
- *  ingredientes: [{ qty, unit, name }],
- *  pasos: [string],
- *  tags: [string],
- *  imagen: dataURL | null,
- *  autor: string
- * }
- */
+export async function getRecipeById(id) {
+  const all = await fetchRecipes();
+  return all.find(r => r.id === id) || null;
+}
+
 export async function createRecipe(payload) {
   await WAIT(500);
   const id = `u_${Date.now()}`;
   const emoji = CAT_EMOJI[payload.categoria?.trim()] || "🍽️";
-  const item = {
-    id,
-    emoji,
-    ...payload,
-  };
+  const item = { id, createdAt:new Date().toISOString(), emoji, ...payload };
   const list = loadUser();
   list.unshift(item);
   saveUser(list);
   return item;
+}
+
+// Para precargar formulario al "clonar y editar"
+export function mapRecipeToFormValues(r) {
+  if (!r) return null;
+  return {
+    titulo: r.titulo || "",
+    categoria: r.categoria || "",
+    tiempo: r.tiempo || "",
+    dificultad: r.dificultad || "",
+    porciones: r.porciones || 2,
+    historia: r.historia || "",
+    ingredientes: r.ingredientes?.length ? r.ingredientes : [{ qty:"", unit:"", name:"" }],
+    pasos: r.pasos?.length ? r.pasos : [""],
+    tagsTxt: r.tags?.length ? r.tags.join(", ") : "",
+    preview: r.imagen || null,
+  };
 }

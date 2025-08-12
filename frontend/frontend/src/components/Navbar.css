@@ -1,0 +1,79 @@
+/* WRAP arriba, centrado y alargado */
+.dock-wrap.top{
+  position: fixed;
+  left: 50%;
+  top: calc(12px + env(safe-area-inset-top, 0));
+  transform: translateX(-50%);
+  z-index: 50;
+  width: min(1200px, 98vw);   /* más alargada */
+}
+
+/* Barra glass */
+.dock{
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 10px 12px;
+  border-radius: 22px;
+  background: rgba(255,255,255,.82);
+  border: 1px solid rgba(203,213,225,.7);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  box-shadow: 0 18px 40px rgba(236,72,153,.15);
+}
+
+/* Secciones */
+.dock-brand{
+  display:flex; align-items:center; gap:8px;
+  padding: 8px 10px; border-radius: 14px; user-select:none; color:#111827;
+  flex: 0 0 auto;
+}
+.brand-ico{ color:#ec4899; font-size:18px; }
+.brand-txt{ font-weight:800; display:none; }
+@media (min-width: 520px){ .brand-txt{ display:inline; } }
+
+.dock-links{
+  display:flex; align-items:center; gap:8px;
+  flex: 1 1 auto; justify-content:center;
+  min-width: 0; /* para que el overflow-x funcione */
+}
+.dock-auth{
+  display:flex; align-items:center; gap:8px;
+  flex: 0 0 auto;
+}
+
+/* Botones */
+.dock-btn{
+  appearance:none; border:0; text-decoration:none;
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+  gap: 6px; padding: 8px 12px;
+  border-radius: 14px; cursor: pointer;
+  color:#334155; font-weight:700;
+  transition: transform .12s ease, filter .15s ease, background .15s ease, border-color .15s ease;
+  white-space: nowrap;
+}
+.dock-btn .ico{ font-size:18px; opacity:.9; }
+.dock-btn .lbl{ font-size:12px; line-height:1; }
+
+.dock-btn:hover{ filter: brightness(1.03); }
+.dock-btn:active{ transform: scale(.98); }
+
+/* Activo */
+.dock-btn.active{
+  color:#ec4899;
+  background: rgba(236,72,153,.10);
+  border:1px solid rgba(236,72,153,.35);
+}
+
+/* Logout degradado */
+.dock-btn.logout{
+  color:#fff;
+  background: linear-gradient(90deg, #ec4899, #d946ef, #6366f1);
+  box-shadow: 0 8px 18px rgba(99,102,241,.25);
+}
+
+/* En pantallas muy chicas, solo íconos para ganar ancho */
+@media (max-width: 420px){
+  .dock-btn .lbl{ display:none; }
+}
