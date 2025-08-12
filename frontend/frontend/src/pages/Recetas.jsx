@@ -1,66 +1,106 @@
-// src/pages/Recetas.jsx
-import { useState } from "react";
-import RecetaCard from "../components/RecetaCard";
-import ModalReceta from "../components/ModalReceta";
-import bibimbap from "../assets/bibimbap.jpeg";
-import topokki from "../assets/topokki.jpeg";
+import { useEffect, useMemo, useState } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
+import "./Recetas.css";
+import { fetchRecipes } from "../services/recipesService";
 
 export default function Recetas() {
-  const [recetaSeleccionada, setRecetaSeleccionada] = useState(null);
+  const [params, setParams] = useSearchParams();
+  const [all, setAll] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const nav = useNavigate();
 
-  const recetas = [
-    {
-      nombre: "Bibimbap",
-      descripcion: "Platillo coreano con arroz, vegetales y huevo 🍳",
-      imagen: bibimbap,
-      ingredientes: ["Arroz", "Zanahoria", "Huevo", "Espinaca", "Gochujang"],
-      preparacion:
-        "Mezcla todos los ingredientes sobre arroz caliente y sirve con gochujang al gusto.",
-      tiempo: "30 minutos",
-      porciones: "2",
-      dificultad: "Media",
-      categoria: "Plato principal",
-      notas: "Puedes acompañar con carne de res marinada para hacerlo más completo.",
-    },
-    {
-      nombre: "Tteokbokki",
-      descripcion: "Pastelitos de arroz picantes con salsa gochujang 🌶️",
-      imagen: topokki,
-      ingredientes: ["Tteok", "Gochujang", "Ajo", "Cebolla", "Azúcar"],
-      preparacion:
-        "Cocina todos los ingredientes en una sartén hasta que la salsa espese.",
-      tiempo: "25 minutos",
-      porciones: "2",
-      dificultad: "Fácil",
-      categoria: "Snack",
-      notas: "Ajusta el nivel de picante según tu gusto.",
-    },
-  ];
+  const qParam = params.get("q") || "";
+  const catParam = params.get("cat") || "";
+
+  const [q, setQ] = useState(qParam);
+  useEffect(()=> setQ(qParam), [qParam]);
+
+  useEffect(() => {
+    setLoading(true);
+    fetchRecipes().then((r) => { setAll(r); setLoading(false); });
+  }, []);
+
+  const categorias = ["Tacos","Pasta","Postres","Ensaladas","Sopas","Sandwiches"];
+
+  const filtered = useMemo(() => {
+    const term = q.toLowerCase().trim();
+    return all.filter(r => {
+      const matchQ = !term ||
+        r.titulo.toLowerCase().includes(term) ||
+        r.tags?.some(t => t.toLowerCase().includes(term));
+      const matchC = !catParam || r.categoria === catParam;
+      return matchQ && matchC;
+    });
+  }, [all, q, catParam]);
+
+  const applySearch = (e) => {
+    e?.preventDefault();
+    const next = new URLSearchParams(params);
+    q ? next.set("q", q) : next.delete("q");
+    setParams(next, { replace: true });
+  };
+
+  const setCat = (cat) => {
+    const next = new URLSearchParams(params);
+    if (cat && cat !== catParam) next.set("cat", cat); else next.delete("cat");
+    setParams(next, { replace: true });
+  };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-pink-100 to-blue-100">
-      {/* contenedor centrado con el mismo ancho del modal */}
-      <div className="mx-auto max-w-3xl px-4 py-8">
-        <h1 className="text-3xl font-bold text-center mb-10">
-          Mis Recetas Favoritas <span className="text-pink-500">💕</span>
-        </h1>
+    <div className="recetas">
+      <h1 className="recetas-title">Recetas</h1>
 
-        <div className="flex flex-col gap-8 items-center">
-          {recetas.map((receta) => (
-            <RecetaCard
-              key={receta.nombre}
-              receta={receta}
-              onOpen={() => setRecetaSeleccionada(receta)}
-            />
-          ))}
-        </div>
+      {/* Buscador */}
+      <form className="recetas-search" onSubmit={applySearch}>
+        <input
+          placeholder="Buscar por ingrediente o nombre…"
+          value={q}
+          onChange={(e)=>setQ(e.target.value)}
+        />
+        <button type="submit">Buscar</button>
+      </form>
+
+      {/* Filtros */}
+      <div className="recetas-chips">
+        {categorias.map(c => (
+          <button
+            key={c}
+            className={`r-chip ${catParam===c ? "active":""}`}
+            onClick={()=>setCat(c===catParam ? "" : c)}
+          >
+            {c}
+          </button>
+        ))}
+        {(qParam || catParam) && (
+          <button className="r-clear" onClick={()=>{ setParams({}); setQ(""); }}>
+            Limpiar filtros
+          </button>
+        )}
       </div>
 
-      {recetaSeleccionada && (
-        <ModalReceta
-          receta={recetaSeleccionada}
-          onClose={() => setRecetaSeleccionada(null)}
-        />
+      {/* Lista */}
+      {loading ? (
+        <p className="muted">Cargando recetas…</p>
+      ) : filtered.length === 0 ? (
+        <p className="muted">No encontramos recetas con esos criterios.</p>
+      ) : (
+        <ul className="grid">
+          {filtered.map(r => (
+            <li key={r.id} className="card">
+              <div className="thumb">{r.emoji || "🍽️"}</div>
+              <div className="info">
+                <h3>{r.titulo}</h3>
+                <p className="meta">{r.categoria} • {r.tiempo} • por {r.autor}</p>
+                <div className="tags">
+                  {(r.tags||[]).map(t => <span key={t} className="tag">#{t}</span>)}
+                </div>
+              </div>
+              <button className="more" onClick={()=>nav(`/recetas?q=${encodeURIComponent(r.titulo)}`)}>
+                Ver similares
+              </button>
+            </li>
+          ))}
+        </ul>
       )}
     </div>
   );

@@ -1,0 +1,30 @@
+.fc-wrap{
+  position: relative; margin: 16px auto 6px; max-width: 900px;
+}
+.fc{
+  display: grid; grid-auto-flow: column; grid-auto-columns: clamp(220px, 28vw, 280px);
+  gap: 14px; overflow-x: auto; scroll-snap-type: x mandatory; padding: 10px 36px;
+}
+.fc::-webkit-scrollbar{ height: 8px; }
+.fc::-webkit-scrollbar-thumb{ background:#e5e7eb; border-radius:8px; }
+
+.fc-card{
+  scroll-snap-align: start; text-align: left; cursor: pointer;
+  border: 1px solid rgba(203,213,225,.8); background: #fff; border-radius: 18px;
+  padding: 14px; transition: transform .12s ease, box-shadow .2s ease;
+  box-shadow: 0 6px 16px rgba(236,72,153,.08);
+}
+.fc-card:hover{ transform: translateY(-2px); box-shadow: 0 12px 28px rgba(236,72,153,.15); }
+
+.fc-emoji{ font-size: 36px; }
+.fc-title{ font-weight: 800; margin-top: 6px; color:#111827; }
+.fc-meta{ color:#6b7280; font-size: 13px; margin-top: 2px; }
+
+.fc-arrow{
+  position: absolute; top: 50%; transform: translateY(-50%); z-index: 2;
+  width: 34px; height: 34px; line-height: 34px; text-align: center; border-radius: 999px;
+  border: 1px solid rgba(203,213,225,.8); background: #fff; cursor: pointer; opacity: .9;
+}
+.fc-arrow:hover{ filter: brightness(1.03); }
+.fc-arrow.left{ left: 0; }
+.fc-arrow.right{ right: 0; }

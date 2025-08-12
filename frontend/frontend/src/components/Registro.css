@@ -1,0 +1,102 @@
+.registro-container {
+    max-width: 400px;
+    margin: 40px auto;
+    background-color: rgba(12, 50, 89, 0.8); /* blanco con 80% de opacidad */
+    border-radius: 16px;
+    padding: 30px;
+    box-shadow: 0 0 15px rgba(0,0,0,0.2);
+    font-family: 'Segoe UI', sans-serif;
+    color: #333;
+  }
+  
+  .registro-titulo {
+    text-align: center;
+    font-size: 24px;
+    color: #f9f9ff;
+    margin-bottom: 20px;
+    font-weight: bold;
+  }
+  
+  .input {
+    width: 100%;
+    padding: 10px 14px;
+    margin-bottom: 10px;
+    border-radius: 8px;
+    border: 1px solid #ccc;
+    font-size: 15px;
+    box-sizing: border-box;
+  }
+  
+  .input-error {
+    border: 1px solid red;
+  }
+  
+  .password-container {
+    position: relative;
+    width: 100%;
+    margin-bottom: 10px;
+  }
+  
+  .password-container .input {
+    padding-right: 40px; /* Espacio para el ícono */
+  }
+  
+  .eye-icon {
+    position: absolute;
+    right: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    cursor: pointer;
+    color: #888;
+    font-size: 18px;
+  }
+  
+  .boton {
+    background-color: #6c63ff;
+    color: white;
+    padding: 10px;
+    width: 100%;
+    font-weight: bold;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+  }
+  
+  .boton:hover {
+    background-color: #5a54e8;
+  }
+  
+  .boton.deshabilitado {
+    background-color: #cccccc;
+    cursor: not-allowed;
+  }
+  
+  .boton-verde {
+    background-color: #28a745;
+    color: white;
+    padding: 10px;
+    width: 100%;
+    font-weight: bold;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+  }
+  
+  .boton-verde:hover {
+    background-color: #218838;
+  }
+  
+  .error {
+    color: red;
+    font-size: 13px;
+    margin-bottom: 8px;
+  }
+  
+  .registro-exito {
+    text-align: center;
+    color: #2cba44;
+    font-weight: bold;
+    font-size: 18px;
+  }
+  
