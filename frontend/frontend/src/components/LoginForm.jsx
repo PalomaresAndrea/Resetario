@@ -1,24 +1,27 @@
+// LoginForm.jsx
 import { useState } from "react";
 import "./LoginForm.css";
-import { login } from "../services/usuarioService";
 import { FaRegEye, FaRegEyeSlash, FaEnvelope, FaLock } from "react-icons/fa";
+import { useAuth } from "../context/AuthContext";
+import { useNavigate } from "react-router-dom";
 
-export default function LoginForm({ onLogin, cambiarVista }) {
+export default function LoginForm({ cambiarVista }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [verPassword, setVerPassword] = useState(false);
   const [error, setError] = useState("");
 
+  const { doLogin } = useAuth();
+  const nav = useNavigate();
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
     try {
-      const res = await login(email, password);
-      localStorage.setItem("token", res.token);
-      localStorage.setItem("usuario", JSON.stringify(res.usuario));
-      onLogin?.({ token: res.token, usuario: res.usuario });
+      await doLogin(email, password);   // ✅ esto actualiza AuthContext.user
+      nav("/nueva");                    // ✅ redirige tras login
     } catch (err) {
-      setError(err.message || "Error al iniciar sesión");
+      setError(err?.message || "Error al iniciar sesión");
     }
   };
 
@@ -56,17 +59,9 @@ export default function LoginForm({ onLogin, cambiarVista }) {
               required
             />
             {verPassword ? (
-              <FaRegEyeSlash
-                className="eye-icon"
-                onClick={() => setVerPassword(false)}
-                title="Ocultar"
-              />
+              <FaRegEyeSlash className="eye-icon" onClick={() => setVerPassword(false)} title="Ocultar" />
             ) : (
-              <FaRegEye
-                className="eye-icon"
-                onClick={() => setVerPassword(true)}
-                title="Ver"
-              />
+              <FaRegEye className="eye-icon" onClick={() => setVerPassword(true)} title="Ver" />
             )}
           </div>
 
