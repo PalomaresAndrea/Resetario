@@ -1,48 +1,69 @@
 // src/services/usuarioService.js
-// Mock de auth para desarrollo (sin backend). Usa localStorage.
 
-const WAIT = (ms = 250) => new Promise(r => setTimeout(r, ms));
-const UKEY = "mock_user";   // guarda el usuario
-const TKEY = "token";       // guarda el token
+// 1) Base URL: usa VITE_API_URL si está definida; si no, usa proxy /api
+const ENV_API = (import.meta?.env?.VITE_API_URL || '').trim();
+// Si ENV_API está vacío, dejaremos BASE vacío y fetch usará ruta relativa '/api/...'
+// que el proxy de Vite enviará a http://localhost:3000
+const BASE = ENV_API || '';
 
+async function req(path, opts = {}) {
+  const url = `${BASE}/api${path}`; // ej: http://localhost:3000/api/auth/login  o  /api/auth/login
+  const res = await fetch(url, {
+    method: 'GET',
+    headers: { 'Content-Type': 'application/json', ...(opts.headers || {}) },
+    ...opts
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    const msg = data?.error || data?.message || `HTTP ${res.status}`;
+    throw new Error(msg);
+  }
+  return data;
+}
+
+/** Registro
+ * payload: { nombre, apellidoPaterno, apellidoMaterno?, correo, contraseña }
+ */
+export async function registrarUsuario(payload) {
+  const fullName = `${payload.nombre} ${payload.apellidoPaterno}${
+    payload.apellidoMaterno ? ' ' + payload.apellidoMaterno : ''
+  }`.trim();
+
+  const body = { name: fullName, email: payload.correo, password: payload.contraseña };
+  return req('/auth/register', { method: 'POST', body: JSON.stringify(body) });
+}
+
+/** Verificar OTP */
+export async function verificarOTP(email, code) {
+  return req('/auth/verify-otp', { method: 'POST', body: JSON.stringify({ email, code }) });
+}
+
+/** Reenviar OTP */
+export async function reenviarOTP(email) {
+  return req('/auth/resend-otp', { method: 'POST', body: JSON.stringify({ email }) });
+}
+
+/** Login */
 export async function login(email, password) {
-  await WAIT(300);
-  if (!email || !password) throw new Error("Correo y contraseña son obligatorios");
-
-  // usuario simulado
-  const user = {
-    id: "u_" + Date.now(),
-    nombre: email.split("@")[0],  // solo para demo
-    email,
-  };
-
-  // token simulado
-  const token = "mock-token-" + Date.now();
-
-  // persistimos para que /me funcione al recargar
-  localStorage.setItem(UKEY, JSON.stringify(user));
-  localStorage.setItem(TKEY, token);
-
-  return { token, user };
+  const data = await req('/auth/login', {
+    method: 'POST',
+    body: JSON.stringify({ email, password }),
+  });
+  localStorage.setItem('token', data.token);
+  localStorage.setItem('usuario', JSON.stringify(data.user));
+  return { token: data.token, user: data.user };
 }
 
+/** /me (requiere Bearer token) */
 export async function me() {
-  await WAIT(150);
-  const token = localStorage.getItem(TKEY);
+  const token = localStorage.getItem('token');
   if (!token) return null;
-  const raw = localStorage.getItem(UKEY);
-  return raw ? JSON.parse(raw) : null;
+  try {
+    const data = await req('/auth/me', {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    return data.user || null;
+  } catch {
+    return null;
+  }
 }
-
-export async function register(payload) {
-  await WAIT(350);
-  // aquí podrías validar campos; por ahora solo echo back
-  return { ok: true, user: { id: "u_" + Date.now(), ...payload } };
-}
-
-// Si más adelante haces OTP real, aquí puedes simularlo
-export async function verifyOtp(email, code) {
-  await WAIT(150);
-  return { ok: true };
-}
-export { register as registrarUsuario, verifyOtp as verificarOTP };

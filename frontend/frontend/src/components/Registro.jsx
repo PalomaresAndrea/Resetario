@@ -1,5 +1,6 @@
-import { useState } from "react";
-import { registrarUsuario, verificarOTP } from "../services/usuarioService";
+import { useEffect, useState } from "react";
+import { registrarUsuario, verificarOTP, reenviarOTP } from "../services/usuarioService";
+import OTPInput from "../components/OTPInput";
 import "./Registro.css";
 import { FaEye, FaEyeSlash } from "react-icons/fa";
 
@@ -17,12 +18,23 @@ export default function Registro({ cambiarVista }) {
 
   const [errores, setErrores] = useState({});
   const [verContraseña, setVerContraseña] = useState(false);
+  const [cooldown, setCooldown] = useState(0);
+
+  // cooldown del botón "Reenviar OTP"
+  useEffect(() => {
+    if (!cooldown) return;
+    const t = setInterval(() => setCooldown((c) => (c > 0 ? c - 1 : 0)), 1000);
+    return () => clearInterval(t);
+  }, [cooldown]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
     setForm((prev) => ({ ...prev, [name]: value }));
     if (errores[name]) setErrores((prev) => ({ ...prev, [name]: "" }));
   };
+
+  const validarCorreo = (correo) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(correo);
+  const validarContraseña = (c) => /^(?=.*[A-Z])(?=.*\d)(?=.*[\W_]).{8,}$/.test(c);
 
   const handleBlur = (e) => {
     const { name, value } = e.target;
@@ -34,16 +46,12 @@ export default function Registro({ cambiarVista }) {
     if (name === "correo" && !validarCorreo(value))
       nuevos.correo = "Correo no válido";
     if (name === "contraseña" && !validarContraseña(value))
-      nuevos.contraseña =
-        "Debe tener 8 caracteres, mayúscula, número y símbolo";
+      nuevos.contraseña = "Debe tener 8 caracteres, mayúscula, número y símbolo";
     if (name === "confirmar" && value !== form.contraseña)
       nuevos.confirmar = "Las contraseñas no coinciden";
 
     setErrores(nuevos);
   };
-
-  const validarCorreo = (correo) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(correo);
-  const validarContraseña = (c) => /^(?=.*[A-Z])(?=.*\d)(?=.*[\W_]).{8,}$/.test(c);
 
   const validarCampos = () => {
     const e = {};
@@ -67,21 +75,34 @@ export default function Registro({ cambiarVista }) {
 
     try {
       const res = await registrarUsuario(form);
-      alert(res.mensaje);
+      alert(res.message || res.mensaje || "Registro enviado. Revisa tu correo.");
       setForm((prev) => ({ ...prev, paso: 2 }));
+      setCooldown(60); // cooldown de reenvío
     } catch (err) {
-      alert("Error al registrar: " + err.message);
+      alert("Error al registrar: " + (err.message || err.toString()));
     }
   };
 
   const verificar = async () => {
-    if (!form.otp) return alert("Debes ingresar el OTP");
+    if (!form.otp || form.otp.length < 6)
+      return alert("Debes ingresar el OTP completo");
     try {
       const res = await verificarOTP(form.correo, form.otp);
-      alert(res.mensaje);
+      alert(res.message || res.mensaje || "Correo verificado");
       setForm((prev) => ({ ...prev, paso: 3 }));
     } catch (err) {
-      alert("OTP inválido: " + err.message);
+      alert("OTP inválido: " + (err.message || err.toString()));
+    }
+  };
+
+  const reenviar = async () => {
+    if (cooldown) return;
+    try {
+      const res = await reenviarOTP(form.correo);
+      alert(res.message || res.mensaje || "OTP reenviado");
+      setCooldown(60);
+    } catch (err) {
+      alert(err.message || "No se pudo reenviar");
     }
   };
 
@@ -201,15 +222,23 @@ export default function Registro({ cambiarVista }) {
               Te enviamos un código OTP a <b>{form.correo}</b>
             </p>
 
-            <input
-              name="otp"
-              placeholder="Código OTP"
-              onChange={handleChange}
-              className="input"
-            />
-            <button onClick={verificar} className="boton-verde">
-              Verificar OTP
-            </button>
+            <div className="mb-4" style={{ display: "flex", justifyContent: "center" }}>
+              <OTPInput
+                length={6}
+                value={form.otp}
+                onChange={(v) => setForm((prev) => ({ ...prev, otp: v }))}
+                autoFocus
+              />
+            </div>
+
+            <div className="flex gap-3" style={{ display: "flex", gap: "12px", justifyContent: "center" }}>
+              <button onClick={verificar} className="boton-verde" disabled={(form.otp?.length || 0) < 6}>
+                Verificar OTP
+              </button>
+              <button onClick={reenviar} className="boton-secundario" disabled={!!cooldown}>
+                {cooldown ? `Reenviar (${cooldown})` : "Reenviar OTP"}
+              </button>
+            </div>
           </>
         )}
 
