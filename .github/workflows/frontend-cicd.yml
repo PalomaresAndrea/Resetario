@@ -5,7 +5,7 @@ on:
     branches: [ main ]
   pull_request:
 
-# Evita despliegues solapados sin usar secrets aquí
+# Evitar despliegues solapados (sin usar secrets aquí)
 concurrency:
   group: fe-${{ github.repository }}-${{ github.ref_name }}
   cancel-in-progress: true
@@ -65,7 +65,7 @@ jobs:
         working-directory: .
 
       - name: ACR Login (RBAC)
-        run: az acr login --name ${{ secrets.ACR_NAME }}
+        run: az acr login --name ${{ env.ACR_NAME }}
         shell: bash
         working-directory: .
 
@@ -83,23 +83,37 @@ jobs:
 
       # ====== Docker Hub (opcional) ======
       - name: Docker Hub login (skip si no hay secrets)
-        if: ${{ secrets.DOCKERHUB_USERNAME && secrets.DOCKERHUB_TOKEN }}
-        run: echo "${{ secrets.DOCKERHUB_TOKEN }}" | docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
+        env:
+          DH_USER: ${{ secrets.DOCKERHUB_USERNAME }}
+          DH_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
+        run: |
+          if [ -n "$DH_USER" ] && [ -n "$DH_TOKEN" ]; then
+            echo "$DH_TOKEN" | docker login -u "$DH_USER" --password-stdin
+          else
+            echo "No DOCKERHUB_USERNAME/DOCKERHUB_TOKEN; skipping Docker Hub login."
+          fi
         working-directory: .
 
       - name: Push image to Docker Hub (skip si no hay secrets)
-        if: ${{ secrets.DOCKERHUB_USERNAME && secrets.DOCKERHUB_TOKEN }}
+        env:
+          DH_USER: ${{ secrets.DOCKERHUB_USERNAME }}
+          DH_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
+          DH_REPO: ${{ secrets.DOCKERHUB_REPO }}   # opcional; usa IMAGE_NAME si no está
         run: |
-          DH_REPO="${{ secrets.DOCKERHUB_REPO || env.IMAGE_NAME }}"
-          SRC="${{ env.ACR_LOGIN_SERVER }}/${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }}"
-          DST_SHA="${{ secrets.DOCKERHUB_USERNAME }}/${DH_REPO}:${GITHUB_SHA::7}"
-          DST_LATEST="${{ secrets.DOCKERHUB_USERNAME }}/${DH_REPO}:latest"
-          docker tag "$SRC" "$DST_SHA"
-          docker tag "$SRC" "$DST_LATEST"
-          docker push "$DST_SHA"
-          docker push "$DST_LATEST"
+          if [ -n "$DH_USER" ] && [ -n "$DH_TOKEN" ]; then
+            [ -z "$DH_REPO" ] && DH_REPO="${{ env.IMAGE_NAME }}"
+            SRC="${{ env.ACR_LOGIN_SERVER }}/${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }}"
+            DST_SHA="${DH_USER}/${DH_REPO}:${GITHUB_SHA::7}"
+            DST_LATEST="${DH_USER}/${DH_REPO}:latest"
+            docker tag "$SRC" "$DST_SHA"
+            docker tag "$SRC" "$DST_LATEST"
+            docker push "$DST_SHA"
+            docker push "$DST_LATEST"
+          else
+            echo "No Docker Hub secrets; skipping push."
+          fi
         working-directory: .
-      # ===============================
+      # ====================================
 
       - name: Configure Web App container (HTTPS)
         run: |
