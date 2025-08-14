@@ -1,5 +1,7 @@
 // src/services/recipesService.js
-// Servicio MOCK con localStorage para que todo el front funcione sin backend.
+import api from "./api";
+
+const USE_MOCK = (import.meta?.env?.VITE_USE_MOCK || "false").toLowerCase() === "true";
 
 const WAIT = (ms = 350) => new Promise(r => setTimeout(r, ms));
 const LS_KEY = "mock_user_recipes";
@@ -9,8 +11,8 @@ const CAT_EMOJI = {
   Desayunos:"🍳", Bebidas:"🥤", Mariscos:"🦐"
 };
 
-// Recetas base (con ingredientes y pasos)
 const RECETAS_BASE = [
+  // ... (puedes mantener tus 3 recetas base tal como las tenías)
   {
     id:"r1", titulo:"Tacos al pastor", categoria:"Tacos", tiempo:"30 min",
     dificultad:"Fácil", porciones:4, autor:"Ana", emoji:"🌮", tags:["cerdo","piña"],
@@ -71,7 +73,7 @@ const RECETAS_BASE = [
   },
 ];
 
-// ---- helpers localStorage ----
+// ---- helpers localStorage (mock) ----
 function loadUser() {
   try { return JSON.parse(localStorage.getItem(LS_KEY)) || []; }
   catch { return []; }
@@ -80,23 +82,30 @@ function saveUser(arr) {
   localStorage.setItem(LS_KEY, JSON.stringify(arr));
 }
 
-// ---- API MOCK ----
-export async function fetchRecipes() {
+// ====== INTENTAR API REAL ======
+async function apiFetchRecipes() {
+  const { data } = await api.get("/recipes");
+  return data;
+}
+async function apiGetRecipeById(id) {
+  const { data } = await api.get(`/recipes/${id}`);
+  return data;
+}
+async function apiCreateRecipe(payload) {
+  const { data } = await api.post("/recipes", payload);
+  return data;
+}
+
+// ====== MOCK FALLBACK ======
+async function mockFetchRecipes() {
   await WAIT();
   return [...RECETAS_BASE, ...loadUser()];
 }
-
-export async function fetchFeatured() {
-  const all = await fetchRecipes();
-  return all.slice(0, 5);
-}
-
-export async function getRecipeById(id) {
-  const all = await fetchRecipes();
+async function mockGetRecipeById(id) {
+  const all = await mockFetchRecipes();
   return all.find(r => r.id === id) || null;
 }
-
-export async function createRecipe(payload) {
+async function mockCreateRecipe(payload) {
   await WAIT(500);
   const id = `u_${Date.now()}`;
   const emoji = CAT_EMOJI[payload.categoria?.trim()] || "🍽️";
@@ -105,6 +114,30 @@ export async function createRecipe(payload) {
   list.unshift(item);
   saveUser(list);
   return item;
+}
+
+// ====== API PÚBLICA PARA EL UI ======
+export async function fetchRecipes() {
+  if (USE_MOCK) return mockFetchRecipes();
+  try { return await apiFetchRecipes(); }
+  catch { return mockFetchRecipes(); }
+}
+
+export async function fetchFeatured() {
+  const all = await fetchRecipes();
+  return all.slice(0, 5);
+}
+
+export async function getRecipeById(id) {
+  if (USE_MOCK) return mockGetRecipeById(id);
+  try { return await apiGetRecipeById(id); }
+  catch { return mockGetRecipeById(id); }
+}
+
+export async function createRecipe(payload) {
+  if (USE_MOCK) return mockCreateRecipe(payload);
+  try { return await apiCreateRecipe(payload); }
+  catch { return mockCreateRecipe(payload); }
 }
 
 // Para precargar formulario al "clonar y editar"
