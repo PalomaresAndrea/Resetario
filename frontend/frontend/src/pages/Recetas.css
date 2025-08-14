@@ -1,0 +1,187 @@
+/* ===== Fondo aurora solo para Recetas ===== */
+.recetas-bg{
+  min-height: 100vh;
+  padding: 16px 0 90px;
+  background:
+    radial-gradient(900px 500px at 10% -10%, rgba(236,72,153,.18), transparent 60%),
+    radial-gradient(1000px 600px at 85% 0%, rgba(99,102,241,.18), transparent 60%),
+    radial-gradient(800px 400px at 50% 100%, rgba(16,185,129,.10), transparent 60%),
+    linear-gradient(180deg, #ffffff, #fbfbff);
+}
+
+/* ===== Contenedor ===== */
+.recetas{
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 26px 24px;
+  color:#111827;
+}
+
+/* ===== Título con degradé y subrayado sutil ===== */
+.recetas-title{
+  margin: 0 0 14px;
+  font-size: 40px;
+  font-weight: 900;
+  letter-spacing: .3px;
+  background: linear-gradient(90deg,#111827 0%, #6b21a8 45%, #ec4899 85%);
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+  position: relative;
+}
+.recetas-title::after{
+  content:"";
+  display:block;
+  width: 82px; height: 4px; border-radius: 999px;
+  margin-top: 8px;
+  background: linear-gradient(90deg,#ec4899,#d946ef,#6366f1);
+  box-shadow: 0 6px 18px rgba(236,72,153,.35);
+}
+
+/* ===== Buscador glass ===== */
+.recetas-search{
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 12px;
+  margin: 10px 0 16px;
+}
+.recetas-search input{
+  border-radius: 999px;
+  padding: 13px 16px;
+  outline: none;
+  border: 1px solid rgba(203,213,225,.85);
+  background: rgba(255,255,255,.85);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  box-shadow: 0 10px 24px rgba(2,8,23,.04);
+}
+.recetas-search input:focus{
+  border-color:#f9a8d4;
+  box-shadow: 0 0 0 3px rgba(244,114,182,.28);
+}
+.recetas-search button{
+  border: 0;
+  border-radius: 999px;
+  padding: 12px 20px;
+  color: #fff;
+  font-weight: 800;
+  cursor: pointer;
+  background: linear-gradient(90deg, #ec4899, #d946ef, #6366f1);
+  box-shadow: 0 10px 26px rgba(99,102,241,.28);
+  transition: transform .12s ease, filter .15s ease;
+}
+.recetas-search button:hover{ filter: brightness(1.04); }
+.recetas-search button:active{ transform: scale(.98); }
+
+/* ===== Chips de categorías (pill pro) ===== */
+.recetas-chips{
+  display:flex; flex-wrap:wrap; gap:10px;
+  margin: 6px 0 14px;
+}
+.r-chip{
+  border:1px solid rgba(203,213,225,.9);
+  background:#fff;
+  border-radius:999px;
+  padding: 10px 14px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: filter .15s ease, transform .12s ease, border-color .15s ease, box-shadow .2s ease;
+  color:#0f172a;
+}
+.r-chip:hover{
+  transform: translateY(-1px);
+  filter: brightness(1.02);
+  box-shadow: 0 8px 22px rgba(2,8,23,.06);
+}
+.r-chip.active{
+  border-color: transparent;
+  background:
+    linear-gradient(#fff,#fff) padding-box,
+    linear-gradient(90deg, rgba(236,72,153,.8), rgba(99,102,241,.8)) border-box;
+  box-shadow: 0 10px 26px rgba(236,72,153,.16);
+}
+.r-clear{
+  margin-left:auto;
+  border:0;
+  background:transparent;
+  color:#ef4444;
+  font-weight:800;
+  cursor:pointer;
+}
+
+/* ===== Grid de tarjetas ===== */
+.grid{
+  display:grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 16px;
+}
+
+/* Card con borde degradado + glass */
+.card{
+  display:grid;
+  grid-template-columns: 60px 1fr auto;
+  gap: 12px; align-items:center;
+  border: 1px solid transparent;
+  background:
+    linear-gradient(#ffffff,#ffffff) padding-box,
+    linear-gradient(135deg, rgba(236,72,153,.35), rgba(99,102,241,.35)) border-box;
+  border-radius: 20px;
+  padding: 14px;
+  box-shadow:
+    0 10px 26px rgba(236,72,153,.12),
+    0 16px 46px rgba(99,102,241,.10);
+  transition: transform .12s ease, box-shadow .18s ease;
+  cursor: pointer;
+}
+.card:hover{
+  transform: translateY(-2px);
+  box-shadow:
+    0 16px 36px rgba(236,72,153,.16),
+    0 22px 56px rgba(99,102,241,.14);
+}
+
+/* Emoji / miniatura */
+.thumb{
+  width:60px; height:60px;
+  display:grid; place-items:center;
+  font-size:32px;
+  border-radius: 16px;
+  border: 1px solid rgba(203,213,225,.7);
+  background: linear-gradient(180deg,#fff, #f8fafc);
+}
+
+/* Info */
+.info h3{
+  margin: 0 0 4px;
+  font-size: 18px;
+  font-weight: 900;
+  color:#0f172a;
+}
+.meta{ margin:0; color:#6b7280; font-size:12px; }
+.tags{ display:flex; flex-wrap:wrap; gap:6px; margin-top:6px; }
+.tag{
+  background:#f3f4f6;
+  border-radius:999px;
+  padding:3px 9px;
+  font-size:12px;
+  color:#374151;
+}
+
+/* Botón secundario pill con borde suave */
+.more{
+  border:1px solid rgba(203,213,225,.9);
+  background:#fff;
+  border-radius:999px;
+  padding:10px 14px;
+  font-weight:800;
+  color:#0f172a;
+  cursor:pointer;
+  transition: transform .12s ease, filter .15s ease;
+}
+.more:hover{ filter: brightness(1.03); }
+.more:active{ transform: scale(.98); }
+
+/* Pequeños ajustes responsive */
+@media (max-width: 520px){
+  .recetas-title{ font-size: 32px; }
+  .card{ grid-template-columns: 48px 1fr auto; }
+  .thumb{ width:48px; height:48px; font-size:26px; }
+}

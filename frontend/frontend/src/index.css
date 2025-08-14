@@ -1,8 +1,160 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+/* Fondo de galaxia detrás de todo */
+.galaxy-background {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: -1; /* Para que el fondo quede detrás */
+  overflow: hidden;
+}
 
-/* reset suave */
-html, body, #root { height: 100%; }
-*, *::before, *::after { box-sizing: border-box; }
-a { text-decoration: none; color: inherit; }
+/* Contenedor general de la app */
+.contenedor-app {
+  position: relative;
+  z-index: 1;
+  min-height: 100vh;
+  padding: 2rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+}
+
+/* Estilo caja de login o registro */
+.contenedor-login {
+  background: white;
+  color: #333;
+  padding: 2.5rem;
+  border-radius: 1rem;
+  max-width: 400px;
+  width: 100%;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.3);
+}
+
+/* Título */
+.titulo-login {
+  font-size: 2rem;
+  font-weight: bold;
+  color: #5b21b6;
+  margin-bottom: 1.5rem;
+  text-align: center;
+}
+
+/* Texto inferior */
+.texto-cambio-vista {
+  margin-top: 1.5rem;
+  text-align: center;
+  font-size: 0.9rem;
+  color: #555;
+}
+
+.boton-cambio {
+  color: #5b21b6;
+  font-weight: bold;
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+
+.boton-cambio:hover {
+  text-decoration: underline;
+}
+
+/* Estilo para dashboard */
+.contenedor-dashboard {
+  background-color: rgba(149, 149, 149, 0.8); /* blanco con 80% de opacidad */
+  color: #333;
+  padding: 2rem 2.5rem;
+  border-radius: 1rem;
+  width: 100%;
+  max-width: 720px; /* antes 1000px */
+  margin: 2rem auto; /* centrar verticalmente */
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.25);
+}
+
+
+.dashboard-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 2rem;
+}
+
+.titulo-dashboard {
+  font-size: 1.8rem;
+  font-weight: bold;
+  color: #5b21b6;
+}
+
+.boton-cerrar {
+  padding: 0.5rem 1rem;
+  background-color: #ef4444;
+  color: white;
+  border: none;
+  border-radius: 0.5rem;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+.boton-cerrar:hover {
+  background-color: #dc2626;
+}
+.puntos-usuario {
+  font-size: 1.2rem;
+  margin-bottom: 1rem;
+  color: #ffc107;
+  text-align: center;
+}
+.boton-canjear {
+  background: linear-gradient(135deg, #a78bfa, #c084fc);
+  color: white;
+  font-weight: bold;
+  padding: 0.75rem 1.5rem;
+  font-size: 1.1rem;
+  border: none;
+  border-radius: 0.75rem;
+  box-shadow: 0 5px 15px rgba(165, 119, 255, 0.4);
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  margin: 1rem auto;
+  display: block;
+}
+
+.boton-canjear:hover {
+  transform: scale(1.05);
+  box-shadow: 0 8px 20px rgba(192, 132, 252, 0.6);
+}
+/* ===== FIX GLOBAL: texto visible en botones/chips/emojis ===== */
+button, .btn, .chip, .fc-card, .recetas-search button, .more {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 15px !important;
+  line-height: 1.2;
+  font-weight: 700;
+  color: #111827 !important;
+  -webkit-text-fill-color: currentColor !important;
+  -webkit-background-clip: border-box !important;
+  background-clip: border-box !important;
+}
+
+/* Botones con gradiente => texto blanco */
+.btn-primary, .btn-success, .btn.primary, .recetas-search button {
+  color: #ffffff !important;
+  -webkit-text-fill-color: #ffffff !important;
+}
+
+/* Asegurar emoji/fuentes legibles en todas partes */
+body, .inicio, .recetas, .nr-wrap, .fc-card, .chip, .thumb {
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Noto Color Emoji",
+               "Apple Color Emoji", "Segoe UI Emoji", Arial, sans-serif;
+}
+/* ===== Reset suave para listas y controles ===== */
+ul, ol { margin: 0; padding: 0; list-style: none; }
+button { border: 0; background: none; }
+input, button, select, textarea { font: inherit; }
+/* colchón para que la navbar superior no tape el contenido */
+body { padding-top: calc(86px + env(safe-area-inset-top, 0)); }
+
+/* si antes dejaste padding-bottom por el dock inferior, ya no hace falta */

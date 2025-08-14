@@ -1,0 +1,154 @@
+:root{
+  --pink:#ec4899; --fuchsia:#d946ef; --indigo:#6366f1; --emerald:#10b981; --slate:#0f172a;
+}
+
+.inicio{
+  position: relative; min-height: 100vh; padding: 64px 20px 120px; color:#111827;
+  background:
+    radial-gradient(1200px 600px at 10% -10%, rgba(236,72,153,0.25), transparent 60%),
+    radial-gradient(1000px 600px at 90% 0%, rgba(99,102,241,0.25), transparent 60%),
+    linear-gradient(180deg, #fff, #fff);
+  overflow: hidden;
+}
+
+.hero{
+  position: relative; max-width: 900px; margin: 0 auto; padding: 36px 24px 28px;
+  border-radius: 24px; background: rgba(255,255,255,.85); backdrop-filter: blur(10px);
+  border: 1px solid rgba(203,213,225,.7); box-shadow: 0 20px 40px rgba(236,72,153,.15);
+  text-align: center; z-index: 1;
+}
+
+.brand{
+  margin: 0 0 4px; font-size: clamp(36px, 6vw, 56px); line-height:1.05; font-weight: 800; letter-spacing:.5px;
+  background: linear-gradient(90deg, var(--pink), var(--fuchsia), var(--indigo));
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+}
+.slogan{ margin: 0 0 8px; font-size: clamp(18px, 2.8vw, 24px); color:#374151; font-weight:600; }
+.sub{ margin: 0 auto 20px; max-width: 46ch; color:#4b5563; }
+
+/* ====== BARRA DE BÚSQUEDA ====== */
+/* 3 columnas: input | buscar (icono) | Ver recetas (ocupa el "espacio vacío" de la derecha) */
+.search{
+  position: relative;
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  gap: 10px;
+  max-width: 680px;
+  margin: 8px auto 12px;
+  align-items: center;
+}
+.search-input{
+  width: 100%; border-radius: 999px; padding: 12px 16px 12px 44px;
+  border: 1px solid rgba(203,213,225,.9); background: rgba(255,255,255,.9); outline: none;
+}
+.search-input:focus{ border-color:#f9a8d4; box-shadow: 0 0 0 3px rgba(244,114,182,.28); }
+.search-icon{
+  position: absolute; left: 14px; top: 50%; transform: translateY(-50%); font-size: 18px; opacity:.6;
+}
+
+/* Botón de buscar (icono) */
+.btn-icon{
+  border-radius: 999px;
+  padding: 10px 14px;
+  background:#fff;
+  border:1px solid rgba(203,213,225,.9);
+  font-size: 18px;
+  line-height: 1;
+  min-width: 48px;
+  display: inline-flex; align-items:center; justify-content:center;
+}
+
+/* Botón "Ver recetas" dentro del search, en el extremo derecho */
+.to-recipes-in-search{
+  border-radius: 999px;
+  padding: 10px 14px;
+  color:#fff !important;
+  border:0;
+  background: linear-gradient(90deg, var(--pink), var(--fuchsia), var(--indigo));
+  box-shadow: 0 8px 20px rgba(99,102,241,.25);
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 800;
+  min-width: 140px;
+  justify-content: center;
+}
+.to-recipes-in-search .emoji{ font-size: 18px; }
+
+/* Responsive: en móviles el botón "Ver recetas" baja a una fila nueva */
+@media (max-width: 640px){
+  .search{ grid-template-columns: 1fr auto; }
+  .to-recipes-in-search{ grid-column: 1 / -1; }
+}
+
+/* ====== CHIPS/CATEGORÍAS ====== */
+.chips{
+  display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; margin: 6px 0 10px;
+}
+.chip{
+  display: inline-flex; align-items: center; gap: 8px; padding: 10px 14px; border-radius: 999px;
+  border: 1px solid rgba(203,213,225,.9); background: #fff; cursor: pointer; font-weight: 600;
+  transition: transform .12s ease, filter .2s ease; color:#111827 !important;
+}
+.chip:hover{ transform: translateY(-1px); filter: brightness(1.02); }
+.chip-emoji{ font-size: 18px; }
+
+/* ====== TIP ====== */
+.tip{
+  margin: 10px auto 6px; display: inline-flex; align-items: center; gap: 8px;
+  padding: 10px 14px; border-radius: 14px; background: rgba(236,72,153,.08); color:#374151;
+  border: 1px solid rgba(236,72,153,.25);
+}
+.tip-emoji{ font-size: 18px; }
+.tip-text{ white-space: nowrap; max-width: 80vw; overflow: hidden; text-overflow: ellipsis; }
+
+.section-title{ margin:14px 0 6px; font-weight:800; color:#111827; }
+
+/* ====== CTAs INFERIORES ====== */
+.cta{
+  display:flex; flex-wrap:wrap; gap:12px; justify-content:center; margin: 14px 0 6px;
+}
+.btn{
+  appearance:none; border:0; border-radius:999px; padding:12px 18px; font-weight:700; cursor:pointer;
+  transition: transform .12s ease, filter .2s ease, opacity .2s ease;
+  display:inline-flex; align-items:center; justify-content:center; font-size:15px; line-height:1.2;
+  color:#111827; -webkit-background-clip: border-box; background-clip: border-box;
+}
+.btn:active{ transform: scale(.98); }
+.btn-ghost{ color: var(--slate); background:#fff; border:1px solid rgba(203,213,225,.9); }
+
+/* “Registrarme” con gradiente verde y texto forzado en blanco */
+.btn-success{
+  color:#fff !important;
+  background: linear-gradient(90deg, var(--emerald), #34d399) !important;
+  box-shadow: 0 8px 20px rgba(16,185,129,.25);
+  border: 0 !important;
+}
+
+/* ====== Fondo de frutas ====== */
+.fruit-cloud{ position:absolute; inset:0; pointer-events:none; z-index:0; }
+.fruit-cloud span{
+  position:absolute; font-size: clamp(22px, 4vw, 36px); opacity:.16;
+  filter: drop-shadow(0 2px 6px rgba(0,0,0,.08)); animation: floatY linear infinite;
+}
+@keyframes floatY{
+  0%{ transform: translateY(0) rotate(0deg); }
+  50%{ transform: translateY(-8px) rotate(6deg); }
+  100%{ transform: translateY(0) rotate(0deg); }
+}
+.fruit-cloud span:nth-child(1){ top:8%; left:8%; animation-duration:7s; }
+.fruit-cloud span:nth-child(2){ top:16%; right:12%; animation-duration:9s; }
+.fruit-cloud span:nth-child(3){ top:28%; left:78%; animation-duration:8s; }
+.fruit-cloud span:nth-child(4){ top:40%; left:4%; animation-duration:10s; }
+.fruit-cloud span:nth-child(5){ top:52%; left:20%; animation-duration:7.5s; }
+.fruit-cloud span:nth-child(6){ top:60%; right:8%; animation-duration:8.5s; }
+.fruit-cloud span:nth-child(7){ top:72%; left:70%; animation-duration:9.5s; }
+.fruit-cloud span:nth-child(8){ top:78%; left:10%; animation-duration:8.2s; }
+.fruit-cloud span:nth-child(9){ top:12%; left:52%; animation-duration:9.2s; }
+.fruit-cloud span:nth-child(10){ top:86%; right:16%; animation-duration:7.8s; }
+
+/* Ajustes móviles */
+@media (max-width: 520px){
+  .cta{ gap:10px; }
+  .btn{ padding:10px 14px; }
+}

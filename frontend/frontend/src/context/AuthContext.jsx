@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useState } from "react";
-import { loginApi, registerApi, verifyOtpApi } from "../services/api";
+import { login as apiLogin, me as apiMe } from "../services/usuarioService";
 
 const AuthContext = createContext(null);
 export const useAuth = () => useContext(AuthContext);
@@ -9,38 +9,27 @@ export default function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const raw = localStorage.getItem("user");
-    if (raw) setUser(JSON.parse(raw));
-    setLoading(false);
+    const t = localStorage.getItem("token");   // <-- ojo: localStorage (l minúscula)
+    if (!t) { setLoading(false); return; }
+    apiMe()
+      .then((u) => setUser(u))
+      .finally(() => setLoading(false));
   }, []);
 
-  const login = async (correo, password) => {
-    const data = await loginApi(correo, password);
-    localStorage.setItem("token", data.token);
-    localStorage.setItem("user", JSON.stringify(data.user));
-    setUser(data.user);
-  };
-
-  const register = async (payload) => {
-    // Solo envía registro; la verificación se hace con verifyOtp()
-    await registerApi(payload);
-  };
-
-  const verifyOtp = async (correo, otp) => {
-    const data = await verifyOtpApi(correo, otp);
-    localStorage.setItem("token", data.token);
-    localStorage.setItem("user", JSON.stringify(data.user));
-    setUser(data.user);
+  const doLogin = async (email, password) => {
+    const { token, user } = await apiLogin(email, password);
+    localStorage.setItem("token", token);      // <-- localStorage correcto
+    setUser(user);
+    return user;
   };
 
   const logout = () => {
-    localStorage.removeItem("token");
-    localStorage.removeItem("user");
+    localStorage.removeItem("token");          // <-- localStorage correcto
     setUser(null);
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, register, verifyOtp, logout }}>
+    <AuthContext.Provider value={{ user, loading, doLogin, logout }}>
       {children}
     </AuthContext.Provider>
   );
