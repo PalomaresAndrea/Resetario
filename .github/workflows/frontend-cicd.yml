@@ -66,7 +66,7 @@ jobs:
       - name: ACR Login (RBAC)
         run: az acr login --name "$ACR_NAME"
 
-      # FIX: indicar el Dockerfile y el contexto correctos
+      # Build con Dockerfile y contexto correctos
       - name: Build image (frontend)
         run: |
           docker build --platform linux/amd64 \
@@ -125,17 +125,42 @@ jobs:
               --deployment-container-image-name "$ACR_LOGIN_SERVER/${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }}"
           fi
 
+          # Configurar contenedor desde ACR
           az webapp config container set -g "$RG" -n "$WN" \
             --docker-custom-image-name "$ACR_LOGIN_SERVER/${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }}" \
             --docker-registry-server-url "https://$ACR_LOGIN_SERVER" \
             --docker-registry-server-user "${{ secrets.ACR_USERNAME }}" \
             --docker-registry-server-password "${{ secrets.ACR_PASSWORD }}"
 
-          az webapp config appsettings set -g "$RG" -n "$WN" --settings WEBSITES_PORT=80
+          # App Settings para contenedor de frontend
+          az webapp config appsettings set -g "$RG" -n "$WN" --settings \
+            WEBSITES_PORT=80 \
+            WEBSITES_CONTAINER_START_TIME_LIMIT=600
+
+          # Health check del Web App en la RAÍZ (no /health)
+          az webapp config set -g "$RG" -n "$WN" --always-on true --health-check-path "/"
+
           echo "WEBAPP_NAME=$WN" >> $GITHUB_ENV
 
       - name: Restart Web App
         run: az webapp restart -g "$RG" -n "$WEBAPP_NAME"
+
+      # Espera a que la raíz responda 200/301/302 (no /health)
+      - name: Esperar a que el frontend esté disponible
+        run: |
+          HOST=$(az webapp show -g "$RG" -n "$WEBAPP_NAME" --query defaultHostName -o tsv)
+          echo "Probing https://${HOST}/"
+          for i in {1..30}; do
+            code=$(curl -s -o /dev/null -w "%{http_code}" --max-time 5 "https://${HOST}/" || true)
+            if [ "$code" = "200" ] || [ "$code" = "301" ] || [ "$code" = "302" ]; then
+              echo "✅ Frontend respondió con $code"
+              exit 0
+            fi
+            echo "Try $i/30… got $code"
+            sleep 5
+          done
+          echo "❌ App no respondió a tiempo"
+          exit 1
 
       - name: Mostrar URL HTTPS del Frontend
         id: show_url
