@@ -1,5 +1,6 @@
 name: CI/CD - Frontend (Tests, Build, Deploy + HTTPS)
 
+
 on:
   push:
     branches: [ main ]
@@ -9,6 +10,7 @@ on:
 concurrency:
   group: fe-${{ github.repository }}-${{ github.ref_name }}
   cancel-in-progress: true
+
 
 env:
   IMAGE_NAME: recetario-frontend
@@ -30,6 +32,7 @@ jobs:
           cache-dependency-path: frontend/frontend/package-lock.json
       - run: npm ci
       - run: npm test
+
 
   deploy:
     name: Despliegue en Azure (Web App HTTPS)
