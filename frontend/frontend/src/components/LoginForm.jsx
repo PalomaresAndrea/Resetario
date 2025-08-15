@@ -1,5 +1,5 @@
 // LoginForm.jsx
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import "./LoginForm.css";
 import { FaRegEye, FaRegEyeSlash, FaEnvelope, FaLock } from "react-icons/fa";
 import { useAuth } from "../context/AuthContext";
@@ -11,15 +11,23 @@ export default function LoginForm({ cambiarVista }) {
   const [verPassword, setVerPassword] = useState(false);
   const [error, setError] = useState("");
 
-  const { doLogin } = useAuth();
+  const { doLogin, user } = useAuth();       // 👈 leemos user del contexto
   const nav = useNavigate();
+
+  // 👇 Cuando el user exista, redirige
+  useEffect(() => {
+    if (user) nav("/nueva", { replace: true });
+  }, [user, nav]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
     try {
-      await doLogin(email, password);   // ✅ esto actualiza AuthContext.user
-      nav("/nueva");                    // ✅ redirige tras login
+      await doLogin(email, password);
+      // No es estrictamente necesario llamar nav aquí;
+      // el efecto anterior se encarga al ver "user".
+      // Si quieres, puedes dejarlo también:
+      // nav("/nueva");
     } catch (err) {
       setError(err?.message || "Error al iniciar sesión");
     }
