@@ -1,18 +1,17 @@
 name: CI/CD - Frontend (Tests, Build, Deploy + HTTPS)
 
-
 on:
   push:
     branches: [ main ]
   pull_request:
 
-# Evitar despliegues solapados (sin usar secrets aquí)
+# Evita despliegues paralelos en la misma rama
 concurrency:
-  group: fe-${{ github.repository }}-${{ github.ref_name }}
+  group: fe-${{ github.ref_name }}
   cancel-in-progress: true
 
-
 env:
+  # Imagen del frontend en ACR
   IMAGE_NAME: recetario-frontend
   IMAGE_TAG: ${{ github.sha }}
 
@@ -20,92 +19,90 @@ jobs:
   test:
     name: Ejecutar pruebas
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: frontend/frontend
     steps:
       - uses: actions/checkout@v4
+
       - uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: npm
           cache-dependency-path: frontend/frontend/package-lock.json
-      - run: npm ci
-      - run: npm test
 
+      - name: Install deps
+        working-directory: frontend/frontend
+        run: npm ci
+
+      - name: Run tests
+        working-directory: frontend/frontend
+        run: npm test
 
   deploy:
     name: Despliegue en Azure (Web App HTTPS)
     needs: test
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: frontend/frontend
+
     env:
       # ===== Azure / ACR =====
       ACR_LOGIN_SERVER: ${{ secrets.ACR_LOGIN_SERVER }}   # p.ej. recetariocr12345.azurecr.io
       ACR_NAME:         ${{ secrets.ACR_NAME }}           # p.ej. recetariocr12345
       RG:               ${{ secrets.RESOURCE_GROUP }}     # p.ej. rg-recetario-westus3
+      LOCATION:         ${{ secrets.AZURE_LOCATION }}     # p.ej. westus3
+
       # ===== App Service =====
       APP_SERVICE_PLAN: ${{ secrets.APP_SERVICE_PLAN }}   # p.ej. recetario-plan-wus3
       WEBAPP_NAME:      ${{ secrets.WEBAPP_NAME }}        # p.ej. recetario-frontend
+
     steps:
       - uses: actions/checkout@v4
 
+      # Login a Azure con tu Service Principal (AZURE_CREDENTIALS)
       - name: Azure Login
         uses: azure/login@v2
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
 
+      # Comprobación del provider Microsoft.Web (no bloqueante)
       - name: Check Microsoft.Web provider (non-blocking)
         run: |
           STATE=$(az provider show -n Microsoft.Web --query registrationState -o tsv || echo "Unknown")
           echo "Microsoft.Web state: $STATE"
           if [ "$STATE" != "Registered" ]; then
-            echo "Microsoft.Web no está registrado desde este SP. Continuando…"
+            echo "Microsoft.Web no está registrado o no hay permisos para registrarlo desde este SP. Continuando…"
           fi
-        shell: bash
-        working-directory: .
 
+      # Login a ACR por RBAC
       - name: ACR Login (RBAC)
-        run: az acr login --name ${{ env.ACR_NAME }}
-        shell: bash
-        working-directory: .
+        run: az acr login --name "$ACR_NAME"
 
-      # Tu Dockerfile se llama "dockerfile" (minúsculas) en frontend/frontend
+      # Build de la imagen del frontend (Dockerfile está en frontend/frontend)
       - name: Build image (frontend)
         run: |
-          docker build \
-            --platform linux/amd64 \
-            -f dockerfile \
-            -t ${{ env.ACR_LOGIN_SERVER }}/${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }} \
-            .
+          docker build --platform linux/amd64 \
+            -f frontend/frontend/Dockerfile \
+            -t $ACR_LOGIN_SERVER/${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }} \
+            frontend/frontend
 
+      # Push a ACR
       - name: Push image to ACR
-        run: docker push ${{ env.ACR_LOGIN_SERVER }}/${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }}
+        run: docker push $ACR_LOGIN_SERVER/${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }}
 
-      # ====== Docker Hub (opcional) ======
+      # ====== Docker Hub (opcional; solo si existen secrets) ======
       - name: Docker Hub login (skip si no hay secrets)
-        env:
-          DH_USER: ${{ secrets.DOCKERHUB_USERNAME }}
-          DH_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
         run: |
-          if [ -n "$DH_USER" ] && [ -n "$DH_TOKEN" ]; then
-            echo "$DH_TOKEN" | docker login -u "$DH_USER" --password-stdin
+          if [ -n "${{ secrets.DOCKERHUB_USERNAME }}" ] && [ -n "${{ secrets.DOCKERHUB_TOKEN }}" ]; then
+            echo "${{ secrets.DOCKERHUB_TOKEN }}" | docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
           else
             echo "No DOCKERHUB_USERNAME/DOCKERHUB_TOKEN; skipping Docker Hub login."
           fi
-        working-directory: .
 
       - name: Push image to Docker Hub (skip si no hay secrets)
         env:
           DH_USER: ${{ secrets.DOCKERHUB_USERNAME }}
-          DH_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
-          DH_REPO: ${{ secrets.DOCKERHUB_REPO }}   # opcional; usa IMAGE_NAME si no está
+          DH_REPO: ${{ secrets.DOCKERHUB_REPO }} # si no está, usaremos IMAGE_NAME
         run: |
-          if [ -n "$DH_USER" ] && [ -n "$DH_TOKEN" ]; then
-            [ -z "$DH_REPO" ] && DH_REPO="${{ env.IMAGE_NAME }}"
-            SRC="${{ env.ACR_LOGIN_SERVER }}/${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }}"
+          if [ -n "${DH_USER}" ] && [ -n "${{ secrets.DOCKERHUB_TOKEN }}" ]; then
+            [ -z "${DH_REPO}" ] && DH_REPO="${{ env.IMAGE_NAME }}"
+            SRC="$ACR_LOGIN_SERVER/${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }}"
             DST_SHA="${DH_USER}/${DH_REPO}:${GITHUB_SHA::7}"
             DST_LATEST="${DH_USER}/${DH_REPO}:latest"
             docker tag "$SRC" "$DST_SHA"
@@ -115,31 +112,52 @@ jobs:
           else
             echo "No Docker Hub secrets; skipping push."
           fi
-        working-directory: .
-      # ====================================
+      # ===========================================================
 
-      - name: Configure Web App container (HTTPS)
+      # Crear/usar App Service Plan (Linux). Si ya existe, no falla.
+      - name: Ensure App Service Plan
         run: |
-          az webapp config container set \
-            --name ${{ env.WEBAPP_NAME }} \
-            --resource-group ${{ env.RG }} \
-            --docker-custom-image-name ${{ env.ACR_LOGIN_SERVER }}/${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }} \
-            --docker-registry-server-url https://${{ env.ACR_LOGIN_SERVER }}
+          PLAN="${APP_SERVICE_PLAN:-recetario-plan}"
+          az appservice plan show -g "$RG" -n "$PLAN" \
+          || az appservice plan create -g "$RG" -n "$PLAN" --is-linux --sku B1 --location "$LOCATION"
+          echo "APP_SERVICE_PLAN=$PLAN" >> $GITHUB_ENV
 
-          az webapp config appsettings set \
-            --name ${{ env.WEBAPP_NAME }} \
-            --resource-group ${{ env.RG }} \
-            --settings WEBSITES_PORT=80
-        working-directory: .
+      # Crear/usar Web App for Containers y apuntarlo a la imagen del ACR
+      - name: Ensure Web App & Container config
+        run: |
+          PLAN="$APP_SERVICE_PLAN"
+          WN="${WEBAPP_NAME}"
+          # nombre válido/único si no viene
+          if [ -z "$WN" ]; then
+            WN="recetario-front-${GITHUB_RUN_NUMBER}-${GITHUB_RUN_ATTEMPT}"
+          fi
+          WN=$(echo "$WN" | tr '[:upper:]' '[:lower:]' | tr -cd 'a-z0-9-')
+          echo "Usando WEBAPP_NAME=$WN"
+
+          if ! az webapp show -g "$RG" -n "$WN" >/dev/null 2>&1; then
+            az webapp create -g "$RG" -p "$PLAN" -n "$WN" \
+              --deployment-container-image-name "$ACR_LOGIN_SERVER/${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }}"
+          fi
+
+          # Configurar contenedor + credenciales de ACR (si usas admin user)
+          az webapp config container set -g "$RG" -n "$WN" \
+            --docker-custom-image-name "$ACR_LOGIN_SERVER/${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }}" \
+            --docker-registry-server-url "https://$ACR_LOGIN_SERVER" \
+            --docker-registry-server-user "${{ secrets.ACR_USERNAME }}" \
+            --docker-registry-server-password "${{ secrets.ACR_PASSWORD }}"
+
+          # Puerto del contenedor Nginx
+          az webapp config appsettings set -g "$RG" -n "$WN" --settings WEBSITES_PORT=80
+
+          echo "WEBAPP_NAME=$WN" >> $GITHUB_ENV
 
       - name: Restart Web App
-        run: az webapp restart --name ${{ env.WEBAPP_NAME }} --resource-group ${{ env.RG }}
-        working-directory: .
+        run: az webapp restart -g "$RG" -n "$WEBAPP_NAME"
 
-      - name: Mostrar URL HTTPS
+      - name: Mostrar URL HTTPS del Frontend
         id: show_url
         run: |
-          HOST=$(az webapp show -g ${{ env.RG }} -n ${{ env.WEBAPP_NAME }} --query defaultHostName -o tsv)
+          HOST=$(az webapp show -g "$RG" -n "$WEBAPP_NAME" --query defaultHostName -o tsv)
           echo "Frontend HTTPS: https://${HOST}"
           echo "url=https://${HOST}" >> $GITHUB_OUTPUT
           {
@@ -147,4 +165,3 @@ jobs:
             echo ""
             echo "🔗 **URL:** https://${HOST}"
           } >> $GITHUB_STEP_SUMMARY
-        working-directory: .
