@@ -66,10 +66,13 @@ jobs:
       - name: ACR Login (RBAC)
         run: az acr login --name "$ACR_NAME"
 
-      # 👇 AQUI EL FIX: ejecuta build desde la carpeta que contiene el Dockerfile
+      # FIX: indicar el Dockerfile y el contexto correctos
       - name: Build image (frontend)
-        working-directory: frontend/frontend
-        run: docker build --platform linux/amd64 -t $ACR_LOGIN_SERVER/${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }} .
+        run: |
+          docker build --platform linux/amd64 \
+            -f frontend/frontend/Dockerfile \
+            -t $ACR_LOGIN_SERVER/${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }} \
+            frontend/frontend
 
       - name: Push image to ACR
         run: docker push $ACR_LOGIN_SERVER/${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }}
