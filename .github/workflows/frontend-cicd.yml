@@ -24,12 +24,14 @@ jobs:
         with:
           node-version: 20
           cache: npm
-          cache-dependency-path: package-lock.json   # está en la raíz
+          cache-dependency-path: frontend/frontend/package-lock.json
 
       - name: Install deps
+        working-directory: frontend/frontend
         run: npm ci
 
       - name: Run tests
+        working-directory: frontend/frontend
         run: npm test
 
   deploy:
@@ -38,15 +40,12 @@ jobs:
     runs-on: ubuntu-latest
 
     env:
-      # ===== Azure / ACR =====
-      ACR_LOGIN_SERVER: ${{ secrets.ACR_LOGIN_SERVER }}   # p.ej. recetariocr12345.azurecr.io
-      ACR_NAME:         ${{ secrets.ACR_NAME }}           # p.ej. recetariocr12345
-      RG:               ${{ secrets.RESOURCE_GROUP }}     # p.ej. rg-recetario-westus3
-      LOCATION:         ${{ secrets.AZURE_LOCATION }}     # p.ej. westus3
-
-      # ===== App Service =====
-      APP_SERVICE_PLAN: ${{ secrets.APP_SERVICE_PLAN }}   # p.ej. recetario-plan-wus3
-      WEBAPP_NAME:      ${{ secrets.WEBAPP_NAME }}        # p.ej. recetario-frontend
+      ACR_LOGIN_SERVER: ${{ secrets.ACR_LOGIN_SERVER }}   # ej: recetariocr12345.azurecr.io
+      ACR_NAME:         ${{ secrets.ACR_NAME }}           # ej: recetariocr12345
+      RG:               ${{ secrets.RESOURCE_GROUP }}     # ej: rg-recetario-westus3
+      LOCATION:         ${{ secrets.AZURE_LOCATION }}     # ej: westus3
+      APP_SERVICE_PLAN: ${{ secrets.APP_SERVICE_PLAN }}   # ej: recetario-plan-wus3
+      WEBAPP_NAME:      ${{ secrets.WEBAPP_NAME }}        # ej: recetario-frontend
 
     steps:
       - uses: actions/checkout@v4
@@ -67,26 +66,14 @@ jobs:
       - name: ACR Login (RBAC)
         run: az acr login --name "$ACR_NAME"
 
-      # ------------ BUILD DOCKER (RAÍZ) ------------
-      - name: Debug: mostrar dónde estoy y qué archivos hay
-        run: |
-          pwd
-          ls -la
-          test -f ./Dockerfile || (echo "❌ No se encontró Dockerfile en $(pwd)"; exit 1)
-          echo "✅ Dockerfile encontrado"
-
+      # 👇 AQUI EL FIX: ejecuta build desde la carpeta que contiene el Dockerfile
       - name: Build image (frontend)
-        run: |
-          docker build \
-            --platform linux/amd64 \
-            -f ./Dockerfile \
-            -t $ACR_LOGIN_SERVER/${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }} \
-            .
+        working-directory: frontend/frontend
+        run: docker build --platform linux/amd64 -t $ACR_LOGIN_SERVER/${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }} .
 
       - name: Push image to ACR
         run: docker push $ACR_LOGIN_SERVER/${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }}
 
-      # ===== Docker Hub (opcional) =====
       - name: Docker Hub login (skip si no hay secrets)
         run: |
           if [ -n "${{ secrets.DOCKERHUB_USERNAME }}" ] && [ -n "${{ secrets.DOCKERHUB_TOKEN }}" ]; then
