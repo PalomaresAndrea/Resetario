@@ -8,24 +8,29 @@ import axios from "axios";
  * Fallback: si no viene el env, forzamos la nube.
  */
 const DEFAULT_ORIGIN = "https://recetario-backend.azurewebsites.net";
-const ORIGIN = (import.meta?.env?.VITE_API_URL || DEFAULT_ORIGIN).replace(/\/+$/, "");
+const RAW_ORIGIN = (import.meta?.env?.VITE_API_URL || DEFAULT_ORIGIN).trim();
+const ORIGIN = RAW_ORIGIN.replace(/\/+$/, "");
 const baseURL = `${ORIGIN}/api`;
 
-// (opcional debug)
-// console.warn("API baseURL =>", baseURL);
-
-const api = axios.create({ baseURL });
+const api = axios.create({
+  baseURL,
+  timeout: 20000,
+  headers: { Accept: "application/json" },
+});
 
 api.interceptors.request.use((cfg) => {
+  cfg.headers = cfg.headers || {};
   const t = localStorage.getItem("token");
   if (t) cfg.headers.Authorization = `Bearer ${t}`;
   return cfg;
 });
 
 api.interceptors.response.use(
-  (r) => r,
+  (res) => res,
   (err) => {
-    if (err?.response?.status === 401) {
+    const status = err?.response?.status;
+    if (status === 401) {
+      // Sesión inválida/expirada → limpiamos y dejamos que la app redirija
       localStorage.removeItem("token");
       localStorage.removeItem("usuario");
     }
