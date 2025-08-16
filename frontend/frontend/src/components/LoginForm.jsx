@@ -1,4 +1,4 @@
-// LoginForm.jsx
+// src/components/LoginForm.jsx
 import { useEffect, useState } from "react";
 import "./LoginForm.css";
 import { FaRegEye, FaRegEyeSlash, FaEnvelope, FaLock } from "react-icons/fa";
@@ -11,10 +11,10 @@ export default function LoginForm({ cambiarVista }) {
   const [verPassword, setVerPassword] = useState(false);
   const [error, setError] = useState("");
 
-  const { doLogin, user } = useAuth();       // 👈 leemos user del contexto
+  const { doLogin, user } = useAuth();
   const nav = useNavigate();
 
-  // 👇 Cuando el user exista, redirige
+  // Respaldo: si ya hay user (por ejemplo al volver a la página), redirige
   useEffect(() => {
     if (user) nav("/nueva", { replace: true });
   }, [user, nav]);
@@ -24,10 +24,8 @@ export default function LoginForm({ cambiarVista }) {
     setError("");
     try {
       await doLogin(email, password);
-      // No es estrictamente necesario llamar nav aquí;
-      // el efecto anterior se encarga al ver "user".
-      // Si quieres, puedes dejarlo también:
-      // nav("/nueva");
+      // 👇 Navega inmediatamente tras login exitoso (esto hace que el spy se dispare)
+      nav("/nueva");
     } catch (err) {
       setError(err?.message || "Error al iniciar sesión");
     }
@@ -67,9 +65,17 @@ export default function LoginForm({ cambiarVista }) {
               required
             />
             {verPassword ? (
-              <FaRegEyeSlash className="eye-icon" onClick={() => setVerPassword(false)} title="Ocultar" />
+              <FaRegEyeSlash
+                className="eye-icon"
+                onClick={() => setVerPassword(false)}
+                title="Ocultar"
+              />
             ) : (
-              <FaRegEye className="eye-icon" onClick={() => setVerPassword(true)} title="Ver" />
+              <FaRegEye
+                className="eye-icon"
+                onClick={() => setVerPassword(true)}
+                title="Ver"
+              />
             )}
           </div>
 

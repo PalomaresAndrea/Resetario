@@ -1,25 +1,42 @@
-import { vi } from "vitest";
+// src/__tests__/LoginForm.test.jsx
+import { vi, beforeEach, expect, test } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import LoginForm from "../components/LoginForm";
 
-// Simulamos un estado de usuario en el mock del contexto
-let mockUser = null;
-const doLoginMock = vi.fn().mockImplementation(async () => {
-  // tras login exitoso, el contexto tendría un usuario
-  mockUser = { id: "u1", email: "a@a.com", name: "Test" };
+// --- HOISTED mocks (seguros con Vitest) ---
+const { state, doLoginMock, mockNavigate } = vi.hoisted(() => {
+  const state = { user: null };
+  const doLoginMock = vi.fn(async (email, password) => {
+    // Simula login exitoso y "login" del contexto
+    state.user = { id: "u1", email, name: "Test" };
+  });
+  const mockNavigate = vi.fn();
+  return { state, doLoginMock, mockNavigate };
 });
 
+// Mock de AuthContext
 vi.mock("../context/AuthContext", () => ({
-  useAuth: () => ({ doLogin: doLoginMock, user: mockUser }),
+  useAuth: () => ({
+    doLogin: doLoginMock,
+    user: state.user, // se actualizará cuando doLoginMock lo cambie
+  }),
 }));
 
-// Mock de navigate
-const mockNavigate = vi.fn();
+// Mock de react-router-dom solo para useNavigate
 vi.mock("react-router-dom", async () => {
   const actual = await vi.importActual("react-router-dom");
   return { ...actual, useNavigate: () => mockNavigate };
-}); // 👈 corregido: sólo "});" (sin paréntesis extra)
+});
+
+// Importa el componente DESPUÉS de definir los mocks
+import LoginForm from "../components/LoginForm";
+
+beforeEach(() => {
+  // Limpia estado entre pruebas
+  state.user = null;
+  doLoginMock.mockClear();
+  mockNavigate.mockClear();
+});
 
 test("hace login y navega a /nueva", async () => {
   const { rerender } = render(<LoginForm />);
@@ -29,15 +46,15 @@ test("hace login y navega a /nueva", async () => {
   await user.type(screen.getByLabelText(/Contraseña/i), "Secret123!");
   await user.click(screen.getByRole("button", { name: /Entrar/i }));
 
-  // Se llamó el login con las credenciales correctas
+  // Se llamó doLogin con credenciales correctas
   await waitFor(() =>
     expect(doLoginMock).toHaveBeenCalledWith("a@a.com", "Secret123!")
   );
 
-  // Simula que el contexto ya tiene user → disparamos el useEffect re-renderizando
+  // Forzamos re-render para que el hook lea el nuevo "user" del mock y dispare el useEffect
   rerender(<LoginForm />);
 
-  // La navegación puede ser nav("/nueva") o nav("/nueva", { replace: true })
+  // Verifica que se llamó navigate hacia /nueva
   await waitFor(() => expect(mockNavigate).toHaveBeenCalled());
   const calls = mockNavigate.mock.calls;
   const fueANueva = calls.some((args) => args[0] === "/nueva");
