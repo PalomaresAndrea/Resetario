@@ -19,6 +19,7 @@ export default function Registro({ cambiarVista }) {
   const [errores, setErrores] = useState({});
   const [verContraseña, setVerContraseña] = useState(false);
   const [cooldown, setCooldown] = useState(0);
+  const [loading, setLoading] = useState(false);
 
   // cooldown del botón "Reenviar OTP"
   useEffect(() => {
@@ -39,70 +40,80 @@ export default function Registro({ cambiarVista }) {
   const handleBlur = (e) => {
     const { name, value } = e.target;
     const nuevos = { ...errores };
-
     if (name === "nombre" && !value.trim()) nuevos.nombre = "Nombre requerido";
-    if (name === "apellidoPaterno" && !value.trim())
-      nuevos.apellidoPaterno = "Apellido paterno requerido";
-    if (name === "correo" && !validarCorreo(value))
-      nuevos.correo = "Correo no válido";
-    if (name === "contraseña" && !validarContraseña(value))
-      nuevos.contraseña = "Debe tener 8 caracteres, mayúscula, número y símbolo";
-    if (name === "confirmar" && value !== form.contraseña)
-      nuevos.confirmar = "Las contraseñas no coinciden";
-
+    if (name === "apellidoPaterno" && !value.trim()) nuevos.apellidoPaterno = "Apellido paterno requerido";
+    if (name === "correo" && !validarCorreo(value)) nuevos.correo = "Correo no válido";
+    if (name === "contraseña" && !validarContraseña(value)) nuevos.contraseña = "Debe tener 8 caracteres, mayúscula, número y símbolo";
+    if (name === "confirmar" && value !== form.contraseña) nuevos.confirmar = "Las contraseñas no coinciden";
     setErrores(nuevos);
   };
 
   const validarCampos = () => {
     const e = {};
     if (!form.nombre.trim()) e.nombre = "Nombre requerido";
-    if (!form.apellidoPaterno.trim())
-      e.apellidoPaterno = "Apellido paterno requerido";
+    if (!form.apellidoPaterno.trim()) e.apellidoPaterno = "Apellido paterno requerido";
     if (!validarCorreo(form.correo)) e.correo = "Correo inválido";
     if (!form.contraseña) e.contraseña = "Contraseña requerida";
     else if (!validarContraseña(form.contraseña))
-      e.contraseña =
-        "Debe tener al menos 8 caracteres, una mayúscula, un número y un símbolo";
-    if (form.contraseña !== form.confirmar)
-      e.confirmar = "Las contraseñas no coinciden";
+      e.contraseña = "Debe tener al menos 8 caracteres, una mayúscula, un número y un símbolo";
+    if (form.contraseña !== form.confirmar) e.confirmar = "Las contraseñas no coinciden";
     return e;
   };
 
   const enviarRegistro = async () => {
+    if (loading) return;
     const v = validarCampos();
     setErrores(v);
     if (Object.keys(v).length) return;
 
     try {
+      setLoading(true);
       const res = await registrarUsuario(form);
       alert(res.message || res.mensaje || "Registro enviado. Revisa tu correo.");
       setForm((prev) => ({ ...prev, paso: 2 }));
       setCooldown(60); // cooldown de reenvío
     } catch (err) {
-      alert("Error al registrar: " + (err.message || err.toString()));
+      const status = err?.response?.status;
+      const msg = err?.response?.data?.error || err?.message || "Error al registrar";
+      // Si el correo ya existía pero no estaba verificado, permite reenviar OTP
+      if (status === 409) {
+        alert("⚠️ Ese correo ya está registrado. Si no verificaste, reenvía el código.");
+        setForm((prev) => ({ ...prev, paso: 2 }));
+      } else if (status === 400) {
+        alert(`Datos inválidos: ${msg}`);
+      } else {
+        alert(msg);
+      }
+    } finally {
+      setLoading(false);
     }
   };
 
   const verificar = async () => {
-    if (!form.otp || form.otp.length < 6)
-      return alert("Debes ingresar el OTP completo");
+    if (!form.otp || form.otp.length < 6) return alert("Debes ingresar el OTP completo");
     try {
+      setLoading(true);
       const res = await verificarOTP(form.correo, form.otp);
       alert(res.message || res.mensaje || "Correo verificado");
       setForm((prev) => ({ ...prev, paso: 3 }));
     } catch (err) {
-      alert("OTP inválido: " + (err.message || err.toString()));
+      alert(err?.response?.data?.error || err.message || "OTP inválido o vencido");
+    } finally {
+      setLoading(false);
     }
   };
 
   const reenviar = async () => {
-    if (cooldown) return;
+    if (cooldown || loading) return;
     try {
+      setLoading(true);
       const res = await reenviarOTP(form.correo);
       alert(res.message || res.mensaje || "OTP reenviado");
       setCooldown(60);
     } catch (err) {
-      alert(err.message || "No se pudo reenviar");
+      alert(err?.response?.data?.error || err.message || "No se pudo reenviar");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -120,9 +131,7 @@ export default function Registro({ cambiarVista }) {
         {form.paso === 1 && (
           <>
             <h2 className="registro-titulo">Crea tu cuenta</h2>
-            <p className="registro-sub">
-              Guarda tus recetas y colabora con tus amigos ✨
-            </p>
+            <p className="registro-sub">Guarda tus recetas y colabora con tus amigos ✨</p>
 
             <input
               name="nombre"
@@ -140,9 +149,7 @@ export default function Registro({ cambiarVista }) {
               onBlur={handleBlur}
               className={`input ${errores.apellidoPaterno ? "input-error" : ""}`}
             />
-            {errores.apellidoPaterno && (
-              <p className="error">{errores.apellidoPaterno}</p>
-            )}
+            {errores.apellidoPaterno && <p className="error">{errores.apellidoPaterno}</p>}
 
             <input
               name="apellidoMaterno"
@@ -153,6 +160,7 @@ export default function Registro({ cambiarVista }) {
 
             <input
               name="correo"
+              type="email"
               placeholder="Correo electrónico *"
               onChange={handleChange}
               onBlur={handleBlur}
@@ -169,16 +177,11 @@ export default function Registro({ cambiarVista }) {
                 onBlur={handleBlur}
                 className={`input ${errores.contraseña ? "input-error" : ""}`}
               />
-              <span
-                onClick={() => setVerContraseña((v) => !v)}
-                className="eye-icon"
-              >
+              <span onClick={() => setVerContraseña((v) => !v)} className="eye-icon">
                 {verContraseña ? <FaEyeSlash /> : <FaEye />}
               </span>
             </div>
-            {errores.contraseña && (
-              <p className="error">{errores.contraseña}</p>
-            )}
+            {errores.contraseña && <p className="error">{errores.contraseña}</p>}
 
             <div className="password-container">
               <input
@@ -189,10 +192,7 @@ export default function Registro({ cambiarVista }) {
                 onBlur={handleBlur}
                 className={`input ${errores.confirmar ? "input-error" : ""}`}
               />
-              <span
-                onClick={() => setVerContraseña((v) => !v)}
-                className="eye-icon"
-              >
+              <span onClick={() => setVerContraseña((v) => !v)} className="eye-icon">
                 {verContraseña ? <FaEyeSlash /> : <FaEye />}
               </span>
             </div>
@@ -200,10 +200,10 @@ export default function Registro({ cambiarVista }) {
 
             <button
               onClick={enviarRegistro}
-              disabled={!completo}
-              className={`boton ${completo ? "" : "deshabilitado"}`}
+              disabled={!completo || loading}
+              className={`boton ${completo && !loading ? "" : "deshabilitado"}`}
             >
-              Enviar registro
+              {loading ? "Creando..." : "Enviar registro"}
             </button>
 
             <p className="texto-cambio-vista">
@@ -232,10 +232,10 @@ export default function Registro({ cambiarVista }) {
             </div>
 
             <div className="flex gap-3" style={{ display: "flex", gap: "12px", justifyContent: "center" }}>
-              <button onClick={verificar} className="boton-verde" disabled={(form.otp?.length || 0) < 6}>
-                Verificar OTP
+              <button onClick={verificar} className="boton-verde" disabled={(form.otp?.length || 0) < 6 || loading}>
+                {loading ? "Verificando..." : "Verificar OTP"}
               </button>
-              <button onClick={reenviar} className="boton-secundario" disabled={!!cooldown}>
+              <button onClick={reenviar} className="boton-secundario" disabled={!!cooldown || loading}>
                 {cooldown ? `Reenviar (${cooldown})` : "Reenviar OTP"}
               </button>
             </div>
@@ -243,9 +243,7 @@ export default function Registro({ cambiarVista }) {
         )}
 
         {form.paso === 3 && (
-          <h3 className="registro-exito">
-            ✅ Registro exitoso. Ahora inicia sesión.
-          </h3>
+          <h3 className="registro-exito">✅ Registro exitoso. Ahora inicia sesión.</h3>
         )}
       </div>
     </div>
