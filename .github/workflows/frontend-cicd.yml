@@ -66,11 +66,11 @@ jobs:
       - name: ACR Login (RBAC)
         run: az acr login --name "$ACR_NAME"
 
-      # FIX: indicar el Dockerfile y el contexto correctos
       - name: Build image (frontend)
         run: |
           docker build --platform linux/amd64 \
             -f frontend/frontend/Dockerfile \
+            --build-arg VITE_API_URL='${{ secrets.VITE_API_URL }}' \
             -t $ACR_LOGIN_SERVER/${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }} \
             frontend/frontend
 
