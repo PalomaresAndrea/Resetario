@@ -4,29 +4,35 @@ import react from "@vitejs/plugin-react";
 
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), "");
-  const hasRemote = !!(env.VITE_API_URL && env.VITE_API_URL.trim());
+  const apiUrl = (env.VITE_API_URL || "").trim();
+  const useProxy = apiUrl === "";
 
   return {
     plugins: [react()],
     server: {
-      host: "localhost",
+      host: true,           // permite acceder desde red o contenedores
       port: 5173,
-      proxy: hasRemote
-        ? undefined
-        : {
+      proxy: useProxy
+        ? {
             "/api": {
               target: "http://localhost:3000",
               changeOrigin: true,
               secure: false,
             },
-          },
+          }
+        : undefined,
       hmr: { protocol: "ws", host: "localhost", port: 5173 },
     },
+    preview: { host: true, port: 5173 },
     test: {
       environment: "jsdom",
       globals: true,
       setupFiles: "./src/test/setup.js",
-      css: true
-    }
+      css: true,
+    },
+    build: {
+      outDir: "dist",
+      sourcemap: true, // útil para diagnosticar en Azure
+    },
   };
 });
