@@ -1,4 +1,3 @@
-// src/services/recipesService.js
 import api from "./api";
 
 const USE_MOCK = (import.meta?.env?.VITE_USE_MOCK || "false").toLowerCase() === "true";
@@ -12,7 +11,6 @@ const CAT_EMOJI = {
 };
 
 const RECETAS_BASE = [
-  // ... (puedes mantener tus 3 recetas base tal como las tenías)
   {
     id:"r1", titulo:"Tacos al pastor", categoria:"Tacos", tiempo:"30 min",
     dificultad:"Fácil", porciones:4, autor:"Ana", emoji:"🌮", tags:["cerdo","piña"],
@@ -78,11 +76,9 @@ function loadUser() {
   try { return JSON.parse(localStorage.getItem(LS_KEY)) || []; }
   catch { return []; }
 }
-function saveUser(arr) {
-  localStorage.setItem(LS_KEY, JSON.stringify(arr));
-}
+function saveUser(arr) { localStorage.setItem(LS_KEY, JSON.stringify(arr)); }
 
-// ====== INTENTAR API REAL ======
+// ====== API REAL ======
 async function apiFetchRecipes() {
   const { data } = await api.get("/recipes");
   return data;
@@ -92,7 +88,31 @@ async function apiGetRecipeById(id) {
   return data;
 }
 async function apiCreateRecipe(payload) {
-  const { data } = await api.post("/recipes", payload);
+  // Construimos FormData (NO enviar Base64 en JSON)
+  const fd = new FormData();
+  fd.append("titulo", payload.titulo || "");
+  fd.append("categoria", payload.categoria || "");
+  fd.append("tiempo", payload.tiempo || "");
+  fd.append("dificultad", payload.dificultad || "");
+  if (payload.porciones != null) fd.append("porciones", String(payload.porciones));
+  if (payload.historia) fd.append("historia", payload.historia);
+
+  (payload.ingredientes || []).forEach((ing) => fd.append("ingredientes[]", JSON.stringify(ing)));
+  (payload.pasos || []).forEach((p) => fd.append("pasos[]", p));
+
+  const tags = payload.tagsTxt
+    ? payload.tagsTxt.split(",").map(t => t.trim()).filter(Boolean)
+    : (payload.tags || []);
+  tags.forEach((t) => fd.append("tags[]", t));
+
+  // Imagen: prioriza File; si no hay, puedes mandar imagenUrl
+  if (payload.imagenFile instanceof File) {
+    fd.append("imagen", payload.imagenFile);
+  } else if (payload.imagenUrl) {
+    fd.append("imagenUrl", payload.imagenUrl);
+  }
+
+  const { data } = await api.post("/recipes", fd); // Axios setea el boundary automáticamente
   return data;
 }
 
@@ -136,8 +156,8 @@ export async function getRecipeById(id) {
 
 export async function createRecipe(payload) {
   if (USE_MOCK) return mockCreateRecipe(payload);
-  try { return await apiCreateRecipe(payload); }
-  catch { return mockCreateRecipe(payload); }
+  // No hacemos fallback silencioso aquí para no "simular" guardado si falla el backend.
+  return apiCreateRecipe(payload);
 }
 
 // Para precargar formulario al "clonar y editar"
@@ -154,5 +174,6 @@ export function mapRecipeToFormValues(r) {
     pasos: r.pasos?.length ? r.pasos : [""],
     tagsTxt: r.tags?.length ? r.tags.join(", ") : "",
     preview: r.imagen || null,
+    imagenFile: null, // aquí guardas el File del <input type="file">
   };
 }
