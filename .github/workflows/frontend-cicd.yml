@@ -60,17 +60,17 @@ jobs:
           STATE=$(az provider show -n Microsoft.Web --query registrationState -o tsv || echo "Unknown")
           echo "Microsoft.Web state: $STATE"
           if [ "$STATE" != "Registered" ]; then
-            echo "Microsoft.Web no está registrado o no hay permisos para registrarlo desde este SP. Continuando…"
+            echo "Microsoft.Web no está registrado o no hay permisos para registrarlo con este SP. Continuando…"
           fi
 
       - name: ACR Login (RBAC)
         run: az acr login --name "$ACR_NAME"
 
-      # FIX: indicar el Dockerfile y el contexto correctos
       - name: Build image (frontend)
         run: |
           docker build --platform linux/amd64 \
             -f frontend/frontend/Dockerfile \
+            --build-arg VITE_API_URL='${{ secrets.VITE_API_URL }}' \
             -t $ACR_LOGIN_SERVER/${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }} \
             frontend/frontend
 
@@ -105,13 +105,15 @@ jobs:
 
       - name: Ensure App Service Plan
         run: |
+          set -euo pipefail
           PLAN="${APP_SERVICE_PLAN:-recetario-plan}"
           az appservice plan show -g "$RG" -n "$PLAN" \
           || az appservice plan create -g "$RG" -n "$PLAN" --is-linux --sku B1 --location "$LOCATION"
           echo "APP_SERVICE_PLAN=$PLAN" >> $GITHUB_ENV
 
-      - name: Ensure Web App & Container config
+      - name: Ensure Web App & Container config (new flags)
         run: |
+          set -euo pipefail
           PLAN="$APP_SERVICE_PLAN"
           WN="${WEBAPP_NAME}"
           if [ -z "$WN" ]; then
@@ -125,13 +127,18 @@ jobs:
               --deployment-container-image-name "$ACR_LOGIN_SERVER/${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }}"
           fi
 
+          # Flags nuevos, sin deprecated warnings
           az webapp config container set -g "$RG" -n "$WN" \
-            --docker-custom-image-name "$ACR_LOGIN_SERVER/${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }}" \
-            --docker-registry-server-url "https://$ACR_LOGIN_SERVER" \
-            --docker-registry-server-user "${{ secrets.ACR_USERNAME }}" \
-            --docker-registry-server-password "${{ secrets.ACR_PASSWORD }}"
+            --container-image-name "$ACR_LOGIN_SERVER/${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }}" \
+            --container-registry-url "https://$ACR_LOGIN_SERVER" \
+            --container-registry-user "${{ secrets.ACR_USERNAME }}" \
+            --container-registry-password "${{ secrets.ACR_PASSWORD }}"
 
-          az webapp config appsettings set -g "$RG" -n "$WN" --settings WEBSITES_PORT=80
+          # App settings requeridos
+          az webapp config appsettings set -g "$RG" -n "$WN" --settings \
+            WEBSITES_PORT=80 \
+            WEBSITES_ENABLE_APP_SERVICE_STORAGE=false
+
           echo "WEBAPP_NAME=$WN" >> $GITHUB_ENV
 
       - name: Restart Web App
