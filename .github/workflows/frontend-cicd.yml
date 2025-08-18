@@ -10,7 +10,7 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  IMAGE_NAME: recetario-frontend
+  IMAGE_REPO: andreapalomares31/recetario-frontend
   IMAGE_TAG: ${{ github.sha }}
 
 jobs:
@@ -35,13 +35,11 @@ jobs:
         run: npm test
 
   deploy:
-    name: Despliegue en Azure (Web App HTTPS)
+    name: Despliegue en Azure (Web App HTTPS, Docker Hub)
     needs: test
     runs-on: ubuntu-latest
 
     env:
-      ACR_LOGIN_SERVER: ${{ secrets.ACR_LOGIN_SERVER }}   # ej: recetariocr12345.azurecr.io
-      ACR_NAME:         ${{ secrets.ACR_NAME }}           # ej: recetariocr12345
       RG:               ${{ secrets.RESOURCE_GROUP }}     # ej: rg-recetario-westus3
       LOCATION:         ${{ secrets.AZURE_LOCATION }}     # ej: westus3
       APP_SERVICE_PLAN: ${{ secrets.APP_SERVICE_PLAN }}   # ej: recetario-plan-wus3
@@ -55,54 +53,6 @@ jobs:
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
 
-      - name: Check Microsoft.Web provider (non-blocking)
-        run: |
-          STATE=$(az provider show -n Microsoft.Web --query registrationState -o tsv || echo "Unknown")
-          echo "Microsoft.Web state: $STATE"
-          if [ "$STATE" != "Registered" ]; then
-            echo "Microsoft.Web no está registrado o no hay permisos para registrarlo con este SP. Continuando…"
-          fi
-
-      - name: ACR Login (RBAC)
-        run: az acr login --name "$ACR_NAME"
-
-      - name: Build image (frontend)
-        run: |
-          docker build --platform linux/amd64 \
-            -f frontend/frontend/Dockerfile \
-            --build-arg VITE_API_URL='${{ secrets.VITE_API_URL }}' \
-            -t $ACR_LOGIN_SERVER/${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }} \
-            frontend/frontend
-
-      - name: Push image to ACR
-        run: docker push $ACR_LOGIN_SERVER/${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }}
-
-      - name: Docker Hub login (skip si no hay secrets)
-        run: |
-          if [ -n "${{ secrets.DOCKERHUB_USERNAME }}" ] && [ -n "${{ secrets.DOCKERHUB_TOKEN }}" ]; then
-            echo "${{ secrets.DOCKERHUB_TOKEN }}" | docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
-          else
-            echo "No DOCKERHUB_USERNAME/DOCKERHUB_TOKEN; skipping Docker Hub login."
-          fi
-
-      - name: Push image to Docker Hub (skip si no hay secrets)
-        env:
-          DH_USER: ${{ secrets.DOCKERHUB_USERNAME }}
-          DH_REPO: ${{ secrets.DOCKERHUB_REPO }}
-        run: |
-          if [ -n "${DH_USER}" ] && [ -n "${{ secrets.DOCKERHUB_TOKEN }}" ]; then
-            [ -z "${DH_REPO}" ] && DH_REPO="${{ env.IMAGE_NAME }}"
-            SRC="$ACR_LOGIN_SERVER/${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }}"
-            DST_SHA="${DH_USER}/${DH_REPO}:${GITHUB_SHA::7}"
-            DST_LATEST="${DH_USER}/${DH_REPO}:latest"
-            docker tag "$SRC" "$DST_SHA"
-            docker tag "$SRC" "$DST_LATEST"
-            docker push "$DST_SHA"
-            docker push "$DST_LATEST"
-          else
-            echo "No Docker Hub secrets; skipping push."
-          fi
-
       - name: Ensure App Service Plan
         run: |
           set -euo pipefail
@@ -111,7 +61,25 @@ jobs:
           || az appservice plan create -g "$RG" -n "$PLAN" --is-linux --sku B1 --location "$LOCATION"
           echo "APP_SERVICE_PLAN=$PLAN" >> $GITHUB_ENV
 
-      - name: Ensure Web App & Container config (new flags)
+      - name: Docker Hub login
+        if: ${{ secrets.DOCKERHUB_USERNAME != '' && secrets.DOCKERHUB_TOKEN != '' }}
+        run: echo "${{ secrets.DOCKERHUB_TOKEN }}" | docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
+
+      - name: Build image (frontend)
+        run: |
+          docker build --platform linux/amd64 \
+            -f frontend/frontend/Dockerfile \
+            --build-arg VITE_API_URL='${{ secrets.VITE_API_URL }}' \
+            -t ${{ env.IMAGE_REPO }}:${{ env.IMAGE_TAG }} \
+            -t ${{ env.IMAGE_REPO }}:latest \
+            frontend/frontend
+
+      - name: Push image to Docker Hub
+        run: |
+          docker push ${{ env.IMAGE_REPO }}:${{ env.IMAGE_TAG }}
+          docker push ${{ env.IMAGE_REPO }}:latest
+
+      - name: Ensure Web App & Container config (Docker Hub, new flags)
         run: |
           set -euo pipefail
           PLAN="$APP_SERVICE_PLAN"
@@ -122,17 +90,20 @@ jobs:
           WN=$(echo "$WN" | tr '[:upper:]' '[:lower:]' | tr -cd 'a-z0-9-')
           echo "Usando WEBAPP_NAME=$WN"
 
+          # Crear la WebApp si no existe (apunta ya a Docker Hub)
           if ! az webapp show -g "$RG" -n "$WN" >/dev/null 2>&1; then
             az webapp create -g "$RG" -p "$PLAN" -n "$WN" \
-              --deployment-container-image-name "$ACR_LOGIN_SERVER/${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }}"
+              --deployment-container-image-name "${{ env.IMAGE_REPO }}:${{ env.IMAGE_TAG }}"
           fi
 
-          # Flags nuevos, sin deprecated warnings
+          # Configurar contenedor: Docker Hub público (sin credenciales)
           az webapp config container set -g "$RG" -n "$WN" \
-            --container-image-name "$ACR_LOGIN_SERVER/${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }}" \
-            --container-registry-url "https://$ACR_LOGIN_SERVER" \
-            --container-registry-user "${{ secrets.ACR_USERNAME }}" \
-            --container-registry-password "${{ secrets.ACR_PASSWORD }}"
+            --container-image-name "${{ env.IMAGE_REPO }}:${{ env.IMAGE_TAG }}" \
+            --container-registry-url "https://index.docker.io"
+
+          # Limpiar DOCKER_* viejos que puedan interferir
+          az webapp config appsettings delete -g "$RG" -n "$WN" --setting-names \
+            DOCKER_REGISTRY_SERVER_URL DOCKER_REGISTRY_SERVER_USERNAME DOCKER_REGISTRY_SERVER_PASSWORD DOCKER_CUSTOM_IMAGE_NAME || true
 
           # App settings requeridos
           az webapp config appsettings set -g "$RG" -n "$WN" --settings \
