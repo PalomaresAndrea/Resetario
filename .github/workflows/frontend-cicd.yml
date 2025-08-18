@@ -1,4 +1,4 @@
-name: CI/CD - Frontend (Tests, Build, Deploy + HTTPS)
+name: CI/CD - Frontend (Tests, Build, Deploy desde Docker Hub)
 
 on:
   push:
@@ -10,7 +10,7 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  IMAGE_REPO: andreapalomares31/recetario-frontend
+  IMAGE_NAME: recetario-frontend
   IMAGE_TAG: ${{ github.sha }}
 
 jobs:
@@ -26,24 +26,26 @@ jobs:
           cache: npm
           cache-dependency-path: frontend/frontend/package-lock.json
 
-      - name: Install deps
+      - name: Instalar dependencias
         working-directory: frontend/frontend
         run: npm ci
 
-      - name: Run tests
+      - name: Ejecutar tests
         working-directory: frontend/frontend
         run: npm test
 
   deploy:
-    name: Despliegue en Azure (Web App HTTPS, Docker Hub)
+    name: Despliegue en Azure (Web App Linux + Docker Hub)
     needs: test
     runs-on: ubuntu-latest
 
     env:
-      RG:               ${{ secrets.RESOURCE_GROUP }}     # ej: rg-recetario-westus3
-      LOCATION:         ${{ secrets.AZURE_LOCATION }}     # ej: westus3
-      APP_SERVICE_PLAN: ${{ secrets.APP_SERVICE_PLAN }}   # ej: recetario-plan-wus3
-      WEBAPP_NAME:      ${{ secrets.WEBAPP_NAME }}        # ej: recetario-frontend
+      RG:               ${{ secrets.RESOURCE_GROUP }}
+      LOCATION:         ${{ secrets.AZURE_LOCATION }}
+      APP_SERVICE_PLAN: ${{ secrets.APP_SERVICE_PLAN }}
+      WEBAPP_NAME:      ${{ secrets.WEBAPP_NAME }}
+      DH_USER:          ${{ secrets.DOCKERHUB_USERNAME }}
+      DH_TOKEN:         ${{ secrets.DOCKERHUB_TOKEN }}
 
     steps:
       - uses: actions/checkout@v4
@@ -53,76 +55,65 @@ jobs:
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
 
-      - name: Ensure App Service Plan
+      - name: Docker Hub login
+        run: echo "$DH_TOKEN" | docker login -u "$DH_USER" --password-stdin
+
+      - name: Build imagen (frontend)
         run: |
           set -euo pipefail
-          PLAN="${APP_SERVICE_PLAN:-recetario-plan}"
-          az appservice plan show -g "$RG" -n "$PLAN" \
-          || az appservice plan create -g "$RG" -n "$PLAN" --is-linux --sku B1 --location "$LOCATION"
-          echo "APP_SERVICE_PLAN=$PLAN" >> $GITHUB_ENV
-
-      - name: Docker Hub login
-        if: ${{ secrets.DOCKERHUB_USERNAME != '' && secrets.DOCKERHUB_TOKEN != '' }}
-        run: echo "${{ secrets.DOCKERHUB_TOKEN }}" | docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
-
-      - name: Build image (frontend)
-        run: |
           docker build --platform linux/amd64 \
             -f frontend/frontend/Dockerfile \
             --build-arg VITE_API_URL='${{ secrets.VITE_API_URL }}' \
-            -t ${{ env.IMAGE_REPO }}:${{ env.IMAGE_TAG }} \
-            -t ${{ env.IMAGE_REPO }}:latest \
+            -t $DH_USER/${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }} \
+            -t $DH_USER/${{ env.IMAGE_NAME }}:latest \
             frontend/frontend
 
-      - name: Push image to Docker Hub
-        run: |
-          docker push ${{ env.IMAGE_REPO }}:${{ env.IMAGE_TAG }}
-          docker push ${{ env.IMAGE_REPO }}:latest
-
-      - name: Ensure Web App & Container config (Docker Hub, new flags)
+      - name: Push a Docker Hub
         run: |
           set -euo pipefail
-          PLAN="$APP_SERVICE_PLAN"
-          WN="${WEBAPP_NAME}"
-          if [ -z "$WN" ]; then
-            WN="recetario-front-${GITHUB_RUN_NUMBER}-${GITHUB_RUN_ATTEMPT}"
+          docker push $DH_USER/${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }}
+          docker push $DH_USER/${{ env.IMAGE_NAME }}:latest
+
+      - name: Asegurar App Service Plan (Linux)
+        run: |
+          set -euo pipefail
+          az appservice plan show -g "$RG" -n "$APP_SERVICE_PLAN" \
+          || az appservice plan create -g "$RG" -n "$APP_SERVICE_PLAN" --is-linux --sku B1 --location "$LOCATION"
+
+      - name: Asegurar Web App
+        run: |
+          set -euo pipefail
+          if ! az webapp show -g "$RG" -n "$WEBAPP_NAME" >/dev/null 2>&1; then
+            az webapp create -g "$RG" -p "$APP_SERVICE_PLAN" -n "$WEBAPP_NAME" \
+              --deployment-container-image-name "$DH_USER/${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }}"
           fi
-          WN=$(echo "$WN" | tr '[:upper:]' '[:lower:]' | tr -cd 'a-z0-9-')
-          echo "Usando WEBAPP_NAME=$WN"
 
-          # Crear la WebApp si no existe (apunta ya a Docker Hub)
-          if ! az webapp show -g "$RG" -n "$WN" >/dev/null 2>&1; then
-            az webapp create -g "$RG" -p "$PLAN" -n "$WN" \
-              --deployment-container-image-name "${{ env.IMAGE_REPO }}:${{ env.IMAGE_TAG }}"
-          fi
+      - name: Configurar contenedor (Docker Hub) y App Settings
+        run: |
+          set -euo pipefail
+          # Importante: URL del registro de Docker Hub
+          az webapp config container set -g "$RG" -n "$WEBAPP_NAME" \
+            --container-image-name "$DH_USER/${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }}" \
+            --container-registry-url "https://index.docker.io/v1/" \
+            --container-registry-user "$DH_USER" \
+            --container-registry-password "$DH_TOKEN"
 
-          # Configurar contenedor: Docker Hub público (sin credenciales)
-          az webapp config container set -g "$RG" -n "$WN" \
-            --container-image-name "${{ env.IMAGE_REPO }}:${{ env.IMAGE_TAG }}" \
-            --container-registry-url "https://index.docker.io"
-
-          # Limpiar DOCKER_* viejos que puedan interferir
-          az webapp config appsettings delete -g "$RG" -n "$WN" --setting-names \
-            DOCKER_REGISTRY_SERVER_URL DOCKER_REGISTRY_SERVER_USERNAME DOCKER_REGISTRY_SERVER_PASSWORD DOCKER_CUSTOM_IMAGE_NAME || true
-
-          # App settings requeridos
-          az webapp config appsettings set -g "$RG" -n "$WN" --settings \
+          # Ajusta el puerto si tu contenedor NO expone 80
+          az webapp config appsettings set -g "$RG" -n "$WEBAPP_NAME" --settings \
             WEBSITES_PORT=80 \
-            WEBSITES_ENABLE_APP_SERVICE_STORAGE=false
+            WEBSITES_ENABLE_APP_SERVICE_STORAGE=false \
+            WEBSITES_CONTAINER_START_TIME_LIMIT=180
 
-          echo "WEBAPP_NAME=$WN" >> $GITHUB_ENV
-
-      - name: Restart Web App
+      - name: Reiniciar Web App
         run: az webapp restart -g "$RG" -n "$WEBAPP_NAME"
 
-      - name: Mostrar URL HTTPS del Frontend
-        id: show_url
+      - name: Mostrar URL
         run: |
           HOST=$(az webapp show -g "$RG" -n "$WEBAPP_NAME" --query defaultHostName -o tsv)
           echo "Frontend HTTPS: https://${HOST}"
-          echo "url=https://${HOST}" >> $GITHUB_OUTPUT
           {
-            echo "### ✅ Frontend desplegado"
+            echo "### ✅ Frontend desplegado desde Docker Hub"
             echo ""
             echo "🔗 **URL:** https://${HOST}"
+            echo "🖼️ **Imagen:** $DH_USER/${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }}"
           } >> $GITHUB_STEP_SUMMARY
