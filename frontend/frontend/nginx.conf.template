@@ -1,0 +1,43 @@
+server {
+  listen 80;
+  server_name _;
+
+  # Archivos estáticos
+  root /usr/share/nginx/html;
+  index index.html;
+
+  # Health para probes
+  location = /health {
+    add_header Content-Type text/plain;
+    return 200 'OK';
+  }
+
+  # Gzip básico
+  gzip on;
+  gzip_types text/plain text/css application/javascript application/json image/svg+xml;
+  gzip_min_length 1024;
+
+  # SPA fallback
+  location / {
+    try_files $uri $uri/ /index.html;
+  }
+
+  # Proxy API al backend (configurable)
+  location /api/ {
+    # CORS simple (ajústalo si necesitas restricciones)
+    add_header Access-Control-Allow-Origin * always;
+    add_header Access-Control-Allow-Methods "GET, POST, PUT, PATCH, DELETE, OPTIONS" always;
+    add_header Access-Control-Allow-Headers "Authorization, Origin, X-Requested-With, Content-Type, Accept" always;
+
+    if ($request_method = OPTIONS) { return 204; }
+
+    proxy_http_version 1.1;
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto $scheme;
+
+    # ¡OJO! Nginx entrypoint reemplaza ${BACKEND_URL} al iniciar el contenedor
+    proxy_pass ${BACKEND_URL};
+  }
+}
