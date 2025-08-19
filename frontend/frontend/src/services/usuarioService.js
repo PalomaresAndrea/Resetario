@@ -1,9 +1,7 @@
-// src/services/usuarioService.js
 import api from "./api";
 
 /** Registro con OTP (o sin OTP; ambos funcionan) */
 export async function registrarUsuario(form) {
-  // Construye el "name" que el backend espera
   const name = [form.nombre, form.apellidoPaterno, form.apellidoMaterno]
     .filter(Boolean)
     .join(" ")
@@ -11,21 +9,16 @@ export async function registrarUsuario(form) {
     .trim();
 
   const body = {
-    // <-- el backend exige "name"
     name,
-
-    // Si tu backend también guarda estos campos, mándalos opcionalmente:
     nombre: form.nombre?.trim(),
     apellidoPaterno: form.apellidoPaterno?.trim(),
     apellidoMaterno: form.apellidoMaterno?.trim(),
-
-    // Campos obligatorios
     email: form.correo?.toLowerCase().trim(),
     password: form.contraseña,
   };
 
   const { data } = await api.post("/auth/register", body);
-  return data;
+  return data; // { message, ... }
 }
 
 export async function verificarOTP(email, otp) {
@@ -33,11 +26,7 @@ export async function verificarOTP(email, otp) {
     email: email?.toLowerCase().trim(),
     otp: String(otp),
   });
-  if (data?.token && data?.user) {
-    localStorage.setItem("token", data.token);
-    localStorage.setItem("usuario", JSON.stringify(data.user));
-  }
-  return data;
+  return data; // { token, user } (o usuario en algunos backends)
 }
 
 export async function reenviarOTP(email) {
@@ -52,27 +41,16 @@ export async function login(email, password) {
     email: email?.toLowerCase().trim(),
     password,
   });
-  if (data?.token && data?.user) {
-    localStorage.setItem("token", data.token);
-    localStorage.setItem("usuario", JSON.stringify(data.user));
-  }
-  return data;
+  // No tocamos localStorage aquí; lo maneja el AuthContext para coherencia.
+  return data; // { token, user } (si tu backend usa "usuario", el contexto lo contempla)
 }
 
 export async function me() {
-  const t = localStorage.getItem("token");
-  if (!t) return null;
   try {
     const { data } = await api.get("/auth/me");
-    const usuario = data?.user || data || null;
-    if (usuario) localStorage.setItem("usuario", JSON.stringify(usuario));
-    return usuario;
+    // Normaliza: puede venir como {user: {...}} o directamente el usuario
+    return data?.user || data || null;
   } catch {
     return null;
   }
-}
-
-export function logout() {
-  localStorage.removeItem("token");
-  localStorage.removeItem("usuario");
 }

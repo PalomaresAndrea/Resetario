@@ -1,5 +1,5 @@
-// src/context/AuthContext.jsx (o donde lo tengas)
-import { createContext, useContext, useEffect, useState } from "react";
+import { createContext, useContext, useEffect, useState, useCallback } from "react";
+import api from "../services/api";
 import { login as apiLogin, me as apiMe } from "../services/usuarioService";
 
 const AuthContext = createContext(null);
@@ -9,30 +9,66 @@ export default function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  // Cargar sesión al iniciar
+  const setSession = useCallback((token, u) => {
+    if (token) {
+      localStorage.setItem("token", token);
+      api.defaults.headers.common.Authorization = `Bearer ${token}`;
+    }
+    if (u) {
+      localStorage.setItem("usuario", JSON.stringify(u));
+      setUser(u);
+    }
+  }, []);
+
+  const clearSession = useCallback(() => {
+    localStorage.removeItem("token");
+    localStorage.removeItem("usuario");
+    delete api.defaults.headers.common.Authorization;
+    setUser(null);
+  }, []);
+
+  // Hidratar sesión al iniciar
   useEffect(() => {
     const t = localStorage.getItem("token");
     if (!t) { setLoading(false); return; }
-    apiMe()
-      .then((u) => setUser(u))
-      .finally(() => setLoading(false));
-  }, []);
 
+    // Intenta recuperar el usuario
+    apiMe()
+      .then((u) => {
+        if (u) {
+          setUser(u);
+          api.defaults.headers.common.Authorization = `Bearer ${t}`;
+        } else {
+          clearSession();
+        }
+      })
+      .finally(() => setLoading(false));
+  }, [clearSession]);
+
+  // Escucha 401 globales desde el interceptor
+  useEffect(() => {
+    const onUnauthorized = () => clearSession();
+    window.addEventListener("app:unauthorized", onUnauthorized);
+    return () => window.removeEventListener("app:unauthorized", onUnauthorized);
+  }, [clearSession]);
+
+  // Login
   const doLogin = async (email, password) => {
-    // 👇 OJO: aquí va "usuario", no "user"
-    const { token, usuario } = await apiLogin(email, password);
-    if (token && usuario) {
-      localStorage.setItem("token", token);
-      localStorage.setItem("usuario", JSON.stringify(usuario));
-      setUser(usuario);                 // 👈 ahora sí actualiza el contexto
+    const data = await apiLogin(email, password);
+    // Normaliza: tu backend podría devolver "user" o "usuario"
+    const token = data?.token;
+    const u = data?.user || data?.usuario;
+
+    if (!token || !u) {
+      const msg = data?.error || "Respuesta de login inválida";
+      throw new Error(msg);
     }
-    return usuario;
+    setSession(token, u);
+    return u;
   };
 
   const logout = () => {
-    localStorage.removeItem("token");
-    localStorage.removeItem("usuario");
-    setUser(null);
+    clearSession();
   };
 
   return (

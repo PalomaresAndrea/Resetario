@@ -1,4 +1,3 @@
-// src/components/LoginForm.jsx
 import { useEffect, useState } from "react";
 import "./LoginForm.css";
 import { FaRegEye, FaRegEyeSlash, FaEnvelope, FaLock } from "react-icons/fa";
@@ -14,7 +13,7 @@ export default function LoginForm({ cambiarVista }) {
   const { doLogin, user } = useAuth();
   const nav = useNavigate();
 
-  // Respaldo: si ya hay user (por ejemplo al volver a la página), redirige
+  // Si ya hay sesión (p.ej. volviendo a login), manda a /nueva
   useEffect(() => {
     if (user) nav("/nueva", { replace: true });
   }, [user, nav]);
@@ -24,10 +23,13 @@ export default function LoginForm({ cambiarVista }) {
     setError("");
     try {
       await doLogin(email, password);
-      // 👇 Navega inmediatamente tras login exitoso (esto hace que el spy se dispare)
-      nav("/nueva");
+      nav("/nueva", { replace: true }); // redirección inmediata
     } catch (err) {
-      setError(err?.message || "Error al iniciar sesión");
+      setError(
+        err?.response?.data?.error ||
+        err?.message ||
+        "Error al iniciar sesión"
+      );
     }
   };
 
