@@ -1,5 +1,3 @@
-import { useRef } from "react";
-
 import React from "react";
 
 export default function OTPInput({
@@ -10,7 +8,7 @@ export default function OTPInput({
   name = "otp",
 }) {
   const handleChange = (e) => {
-    const v = e.target.value.replace(/\D/g, "").slice(0, length); // solo números, máx length
+    const v = e.target.value.replace(/\D/g, "").slice(0, length);
     onChange?.(v);
   };
 
@@ -27,8 +25,10 @@ export default function OTPInput({
   return (
     <input
       name={name}
-      type="text"                // no "number" para no perder ceros a la izquierda
-      inputMode="numeric"        // teclado numérico en móviles
+      type="text"                 /* no "number" para no perder ceros a la izquierda */
+      inputMode="numeric"         /* teclado numérico en móviles */
+      pattern="\d*"               /* ayuda a validar solo dígitos en móviles */
+      autoComplete="one-time-code"
       maxLength={length}
       autoFocus={autoFocus}
       value={value}

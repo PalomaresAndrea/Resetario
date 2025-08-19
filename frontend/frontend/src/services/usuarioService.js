@@ -1,6 +1,6 @@
 import api from "./api";
 
-/** Registro con OTP (o sin OTP; ambos funcionan) */
+/** Registro */
 export async function registrarUsuario(form) {
   const name = [form.nombre, form.apellidoPaterno, form.apellidoMaterno]
     .filter(Boolean)
@@ -14,7 +14,7 @@ export async function registrarUsuario(form) {
     apellidoPaterno: form.apellidoPaterno?.trim(),
     apellidoMaterno: form.apellidoMaterno?.trim(),
     email: form.correo?.toLowerCase().trim(),
-    password: form.contraseña,
+    password: form.contraseña,             // el backend espera "password"
   };
 
   const { data } = await api.post("/auth/register", body);
@@ -26,14 +26,14 @@ export async function verificarOTP(email, otp) {
     email: email?.toLowerCase().trim(),
     otp: String(otp),
   });
-  return data; // { token, user } (o usuario en algunos backends)
+  return data; // { token, user } | { mensaje }
 }
 
 export async function reenviarOTP(email) {
   const { data } = await api.post("/auth/resend-otp", {
     email: email?.toLowerCase().trim(),
   });
-  return data;
+  return data; // { message | mensaje }
 }
 
 export async function login(email, password) {
@@ -41,14 +41,12 @@ export async function login(email, password) {
     email: email?.toLowerCase().trim(),
     password,
   });
-  // No tocamos localStorage aquí; lo maneja el AuthContext para coherencia.
-  return data; // { token, user } (si tu backend usa "usuario", el contexto lo contempla)
+  return data; // { token, user }
 }
 
 export async function me() {
   try {
     const { data } = await api.get("/auth/me");
-    // Normaliza: puede venir como {user: {...}} o directamente el usuario
     return data?.user || data || null;
   } catch {
     return null;
