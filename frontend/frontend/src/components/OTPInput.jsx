@@ -6,7 +6,9 @@ export default function OTPInput({
   onChange,
   autoFocus = false,
   name = "otp",
-}) {
+}) 
+
+{
   const handleChange = (e) => {
     const v = e.target.value.replace(/\D/g, "").slice(0, length);
     onChange?.(v);
