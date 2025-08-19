@@ -21,7 +21,6 @@ export default function Registro({ cambiarVista }) {
   const [cooldown, setCooldown] = useState(0);
   const [loading, setLoading] = useState(false);
 
-  // cooldown del botón "Reenviar OTP"
   useEffect(() => {
     if (!cooldown) return;
     const t = setInterval(() => setCooldown((c) => (c > 0 ? c - 1 : 0)), 1000);
@@ -43,7 +42,8 @@ export default function Registro({ cambiarVista }) {
     if (name === "nombre" && !value.trim()) nuevos.nombre = "Nombre requerido";
     if (name === "apellidoPaterno" && !value.trim()) nuevos.apellidoPaterno = "Apellido paterno requerido";
     if (name === "correo" && !validarCorreo(value)) nuevos.correo = "Correo no válido";
-    if (name === "contraseña" && !validarContraseña(value)) nuevos.contraseña = "Debe tener 8 caracteres, mayúscula, número y símbolo";
+    if (name === "contraseña" && !validarContraseña(value))
+      nuevos.contraseña = "Debe tener 8 caracteres, mayúscula, número y símbolo";
     if (name === "confirmar" && value !== form.contraseña) nuevos.confirmar = "Las contraseñas no coinciden";
     setErrores(nuevos);
   };
@@ -69,16 +69,39 @@ export default function Registro({ cambiarVista }) {
     try {
       setLoading(true);
       const res = await registrarUsuario(form);
-      alert(res.message || res.mensaje || "Registro enviado. Revisa tu correo.");
-      setForm((prev) => ({ ...prev, paso: 2 }));
-      setCooldown(60); // cooldown de reenvío
+      alert(res.message || res.mensaje || "Registro creado. Te enviamos un OTP a tu correo.");
+
+      // Pase directo a verificación
+      setForm((prev) => ({ ...prev, paso: 2, otp: "" }));
+      // Forzar envío de OTP (garantizamos el correo)
+      try {
+        const r = await reenviarOTP(form.correo);
+        // Si tu backend regresa {message} o {mensaje}
+        if (r?.message || r?.mensaje) {
+          // opcional: notificación silenciosa
+          // console.debug("OTP enviado:", r.message || r.mensaje);
+        }
+      } catch (e) {
+        // Si falla el reenvío, igual dejamos al usuario en Paso 2
+        // para que intente manualmente
+        // console.warn("No se pudo reenviar OTP después del registro", e);
+      }
+      setCooldown(60);
     } catch (err) {
       const status = err?.response?.status;
       const msg = err?.response?.data?.error || err?.message || "Error al registrar";
-      // Si el correo ya existía pero no estaba verificado, permite reenviar OTP
+
       if (status === 409) {
-        alert("⚠️ Ese correo ya está registrado. Si no verificaste, reenvía el código.");
-        setForm((prev) => ({ ...prev, paso: 2 }));
+        // Correo ya existe: si no estaba verificado, permitimos reenviar
+        alert("⚠️ Ese correo ya está registrado. Si no verificaste, reenvía el OTP.");
+        setForm((prev) => ({ ...prev, paso: 2, otp: "" }));
+        try {
+          const r = await reenviarOTP(form.correo);
+          alert(r?.message || r?.mensaje || "Hemos reenviado tu OTP.");
+          setCooldown(60);
+        } catch (e) {
+          alert(e?.response?.data?.error || e?.message || "No se pudo reenviar el OTP.");
+        }
       } else if (status === 400) {
         alert(`Datos inválidos: ${msg}`);
       } else {

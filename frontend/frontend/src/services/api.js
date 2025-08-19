@@ -15,7 +15,6 @@ const api = axios.create({
   headers: { Accept: "application/json" },
 });
 
-// Adjunta token en cada request
 api.interceptors.request.use((cfg) => {
   cfg.headers = cfg.headers || {};
   const t = localStorage.getItem("token");
@@ -23,7 +22,6 @@ api.interceptors.request.use((cfg) => {
   return cfg;
 });
 
-// Maneja 401 globalmente
 api.interceptors.response.use(
   (res) => res,
   (err) => {
@@ -31,7 +29,6 @@ api.interceptors.response.use(
     if (status === 401) {
       localStorage.removeItem("token");
       localStorage.removeItem("usuario");
-      // Notifica al contexto para cerrar sesión/reactualizar rutas
       window.dispatchEvent(new Event("app:unauthorized"));
     }
     return Promise.reject(err);
