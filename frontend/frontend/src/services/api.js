@@ -9,6 +9,8 @@ const RAW_ORIGIN = (import.meta?.env?.VITE_API_URL || DEFAULT_ORIGIN).trim();
 const ORIGIN = RAW_ORIGIN.replace(/\/+$/, "");
 const baseURL = `${ORIGIN}/api`;
 
+
+
 const api = axios.create({
   baseURL,
   timeout: 20000,
