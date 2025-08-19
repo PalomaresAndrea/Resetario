@@ -3,8 +3,6 @@ import axios from "axios";
 /**
  * Mantén VITE_API_URL SIN /api, ej:
  *   VITE_API_URL=https://recetario-backend.azurewebsites.net
- *
- * Fallback: si no viene el env, forzamos la nube.
  */
 const DEFAULT_ORIGIN = "https://recetario-backend.azurewebsites.net";
 const RAW_ORIGIN = (import.meta?.env?.VITE_API_URL || DEFAULT_ORIGIN).trim();
@@ -17,6 +15,7 @@ const api = axios.create({
   headers: { Accept: "application/json" },
 });
 
+// Adjunta token en cada request
 api.interceptors.request.use((cfg) => {
   cfg.headers = cfg.headers || {};
   const t = localStorage.getItem("token");
@@ -24,14 +23,16 @@ api.interceptors.request.use((cfg) => {
   return cfg;
 });
 
+// Maneja 401 globalmente
 api.interceptors.response.use(
   (res) => res,
   (err) => {
     const status = err?.response?.status;
     if (status === 401) {
-      // Sesión inválida/expirada → limpiamos y dejamos que la app redirija
       localStorage.removeItem("token");
       localStorage.removeItem("usuario");
+      // Notifica al contexto para cerrar sesión/reactualizar rutas
+      window.dispatchEvent(new Event("app:unauthorized"));
     }
     return Promise.reject(err);
   }
